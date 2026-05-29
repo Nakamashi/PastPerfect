@@ -33,7 +33,7 @@ const ROUTINE_CARDS = [
 ];
 
 // ---------- Animation timing constants ----------
-// Keep these values easy to edit. The full New Turn sequence is slower and clearer for class play.
+// Keep these values easy to edit. New Turn generates a result only; scoring happens after the student writes their sentence.
 const TIME_ROLL_DURATION = 1100;
 const COIN_FLIP_DURATION = 900;
 const CARD_SHUFFLE_DURATION = 1100;
@@ -58,6 +58,7 @@ const elements = {
   secondDie: document.querySelector(".second-die"),
   coin: document.querySelector("#coin"),
   coinText: document.querySelector("#coinText"),
+  deckButton: document.querySelector("#deckButton"),
   deck: document.querySelector("#deck"),
   routineCard: document.querySelector("#routineCard"),
   cardNumber: document.querySelector("#cardNumber"),
@@ -71,37 +72,38 @@ const elements = {
   thisTurnPoints: document.querySelector("#thisTurnPoints"),
   totalPoints: document.querySelector("#totalPoints"),
   scorePop: document.querySelector("#scorePop"),
+  finishedPanel: document.querySelector("#finishedPanel"),
+  finishedTotal: document.querySelector("#finishedTotal"),
+  historyPanel: document.querySelector(".history-panel"),
+  historyToggle: document.querySelector("#historyToggle"),
+  historyToggleText: document.querySelector("#historyToggleText"),
+  historyBody: document.querySelector("#historyBody"),
   historyCount: document.querySelector("#historyCount"),
+  latestHistory: document.querySelector("#latestHistory"),
   historyList: document.querySelector("#historyList"),
+  scheduleButton: document.querySelector("#scheduleButton"),
   settingsMenu: document.querySelector("#settingsMenu"),
   settingsButton: document.querySelector("#settingsButton"),
   settingsDropdown: document.querySelector("#settingsDropdown"),
   settingsForm: document.querySelector("#settingsForm"),
-  buttons: document.querySelectorAll("button"),
   newTurnButton: document.querySelector("#newTurnButton"),
   rollTimeButton: document.querySelector("#rollTimeButton"),
   flipAmpmButton: document.querySelector("#flipAmpmButton"),
   drawCardButton: document.querySelector("#drawCardButton"),
   addPointsButton: document.querySelector("#addPointsButton"),
-  resetButton: document.querySelector("#resetButton")
+  resetButton: document.querySelector("#resetButton"),
+  deckModal: document.querySelector("#deckModal"),
+  deckViewerContent: document.querySelector("#deckViewerContent"),
+  closeDeckModal: document.querySelector("#closeDeckModal"),
+  scheduleModal: document.querySelector("#scheduleModal"),
+  scheduleContent: document.querySelector("#scheduleContent"),
+  closeScheduleModal: document.querySelector("#closeScheduleModal")
 };
 
 const hintData = [
-  {
-    element: elements.hintYet,
-    keyword: "yet",
-    buildSentence: (phrase) => `I haven’t ${phrase} yet.`
-  },
-  {
-    element: elements.hintAlready,
-    keyword: "already",
-    buildSentence: (phrase) => `I have already ${phrase}.`
-  },
-  {
-    element: elements.hintJust,
-    keyword: "just",
-    buildSentence: (phrase) => `I have just ${phrase}.`
-  }
+  { element: elements.hintYet, keyword: "yet", buildSentence: (phrase) => `I haven’t ${phrase} yet.` },
+  { element: elements.hintAlready, keyword: "already", buildSentence: (phrase) => `I have already ${phrase}.` },
+  { element: elements.hintJust, keyword: "just", buildSentence: (phrase) => `I have just ${phrase}.` }
 ];
 
 // ---------- Game state for this browser session ----------
@@ -119,8 +121,10 @@ function getFreshState() {
     turn: 0,
     history: [],
     deck: [],
+    usedCards: [],
     isAnimating: false,
-    currentResultSaved: true
+    currentResultSaved: true,
+    historyExpanded: false
   };
 }
 
@@ -153,12 +157,25 @@ function setSetting(name, value) {
   }
 }
 
+function getRoundLimit() {
+  const value = getSetting("roundLimit");
+  return value === "none" ? null : Number(value || 12);
+}
+
+function isRoundFinished() {
+  const limit = getRoundLimit();
+  return limit !== null && state.turn >= limit;
+}
+
+function hasUnsavedCurrentResult() {
+  return hasFullCurrentResult() && !state.currentResultSaved;
+}
+
 function setButtonsDisabled(disabled) {
-  elements.buttons.forEach((button) => {
-    if (button === elements.addPointsButton) {
-      return;
-    }
-    button.disabled = disabled;
+  const finished = isRoundFinished();
+  elements.newTurnButton.disabled = disabled || finished || hasUnsavedCurrentResult();
+  [elements.rollTimeButton, elements.flipAmpmButton, elements.drawCardButton].forEach((button) => {
+    button.disabled = disabled || finished;
   });
   updateAddPointsButton();
 }
@@ -191,8 +208,18 @@ function shuffleArray(items) {
 
 function ensureDeck() {
   if (state.deck.length === 0) {
+    state.usedCards = [];
     state.deck = shuffleArray(ROUTINE_CARDS);
   }
+}
+
+function resetDeckState() {
+  state.deck = [];
+  state.usedCards = [];
+  if (getSetting("cardMode") === "shuffle") {
+    ensureDeck();
+  }
+  updateDeckCount();
 }
 
 function markCurrentResultChanged() {
@@ -207,8 +234,26 @@ function markCurrentResultSaved() {
   updateAddPointsButton();
 }
 
+function hasFullCurrentResult() {
+  return Boolean(state.card && state.hour !== null && (state.ampm === "AM" || state.ampm === "PM"));
+}
+
 function updateAddPointsButton() {
-  elements.addPointsButton.disabled = state.isAnimating || !state.card || state.currentResultSaved;
+  elements.addPointsButton.disabled = state.isAnimating || !hasFullCurrentResult() || state.currentResultSaved || isRoundFinished();
+}
+
+function minutesAfterMidnight(time, ampm) {
+  const [hourText, minuteText] = time.split(":");
+  let hour = Number(hourText);
+  const minute = Number(minuteText);
+
+  if (ampm === "AM") {
+    hour = hour === 12 ? 0 : hour;
+  } else {
+    hour = hour === 12 ? 12 : hour + 12;
+  }
+
+  return hour * 60 + minute;
 }
 
 // ---------- Result generation ----------
@@ -244,7 +289,9 @@ function generateAmpm() {
 function generateCard() {
   if (getSetting("cardMode") === "shuffle") {
     ensureDeck();
-    return state.deck.pop();
+    const card = state.deck.pop();
+    state.usedCards.unshift(card);
+    return card;
   }
 
   return ROUTINE_CARDS[randomInt(0, ROUTINE_CARDS.length - 1)];
@@ -304,7 +351,7 @@ function setHintRevealed(button, isRevealed, keyword) {
 
 function updateDeckCount() {
   if (getSetting("cardMode") === "shuffle") {
-    elements.deckCount.textContent = `Shuffle deck: ${state.deck.length} of ${ROUTINE_CARDS.length} cards left. No repeats until all cards are used.`;
+    elements.deckCount.textContent = `Shuffle deck: ${state.deck.length} of ${ROUTINE_CARDS.length} cards left. ${state.usedCards.length} used.`;
   } else {
     elements.deckCount.textContent = `Random draw with replacement from ${ROUTINE_CARDS.length} cards`;
   }
@@ -313,7 +360,10 @@ function updateDeckCount() {
 function updateScoreDisplay() {
   elements.thisTurnPoints.textContent = formatPoints(state.thisTurnPoints);
   elements.totalPoints.textContent = formatPoints(state.totalPoints);
-  elements.turnNumber.textContent = `Turn ${state.turn}`;
+  const limit = getRoundLimit();
+  elements.turnNumber.textContent = limit === null ? `Turn ${state.turn}` : `Turn ${state.turn} / ${limit}`;
+  elements.finishedTotal.textContent = `Total: ${formatPoints(state.totalPoints)}`;
+  updateFinishedState();
   updateAddPointsButton();
 }
 
@@ -327,6 +377,10 @@ function applyAppearance() {
   localStorage.setItem(APPEARANCE_STORAGE_KEY, appearance || "light");
 }
 
+function applyDisplayMode() {
+  document.body.classList.toggle("demo-mode", getSetting("displayMode") === "demo");
+}
+
 function loadSavedAppearance() {
   const savedAppearance = localStorage.getItem(APPEARANCE_STORAGE_KEY);
   if (savedAppearance === "dark" || savedAppearance === "light") {
@@ -335,17 +389,26 @@ function loadSavedAppearance() {
   applyAppearance();
 }
 
+function updateFinishedState() {
+  elements.finishedPanel.hidden = !isRoundFinished();
+  setButtonsDisabled(state.isAnimating);
+}
+
 function renderHistory() {
   elements.historyList.innerHTML = "";
   elements.historyCount.textContent = `${state.history.length} ${state.history.length === 1 ? "turn" : "turns"}`;
 
   if (state.history.length === 0) {
+    elements.latestHistory.textContent = "No completed turns yet.";
     const empty = document.createElement("li");
     empty.className = "empty-history";
-    empty.textContent = "Previous turns will appear here.";
+    empty.textContent = "Completed sentence turns will appear here.";
     elements.historyList.append(empty);
     return;
   }
+
+  const latest = state.history[0];
+  elements.latestHistory.textContent = `Latest: Turn ${latest.turn} — ${latest.time} ${latest.ampm}, ${latest.phrase}, ${formatPoints(latest.points)}`;
 
   state.history.forEach((turn, index) => {
     const item = document.createElement("li");
@@ -369,7 +432,7 @@ function addHistoryEntry() {
 }
 
 function addCurrentPoints() {
-  if (!state.card || state.currentResultSaved) {
+  if (!hasFullCurrentResult() || state.currentResultSaved || isRoundFinished()) {
     return;
   }
 
@@ -380,6 +443,7 @@ function addCurrentPoints() {
   animateScore(state.card.points);
   addHistoryEntry();
   markCurrentResultSaved();
+  updateFinishedState();
 }
 
 function animateScore(points) {
@@ -387,6 +451,91 @@ function animateScore(points) {
   elements.scorePop.classList.remove("show");
   void elements.scorePop.offsetWidth;
   elements.scorePop.classList.add("show");
+}
+
+function setHistoryExpanded(isExpanded) {
+  state.historyExpanded = isExpanded;
+  elements.historyPanel.classList.toggle("is-collapsed", !isExpanded);
+  elements.historyPanel.classList.toggle("is-expanded", isExpanded);
+  elements.historyBody.hidden = !isExpanded;
+  elements.historyToggle.setAttribute("aria-expanded", String(isExpanded));
+  elements.historyToggleText.textContent = isExpanded ? "Collapse" : "Expand";
+}
+
+function buildCardList(cards) {
+  const list = document.createElement("ul");
+  list.className = "card-mini-list";
+  cards.forEach((card) => {
+    const item = document.createElement("li");
+    item.textContent = `${card.phrase} - ${formatPoints(card.points)}`;
+    list.append(item);
+  });
+  return list;
+}
+
+function openDeckViewer() {
+  elements.deckViewerContent.innerHTML = "";
+
+  if (getSetting("cardMode") === "shuffle") {
+    const remainingTitle = document.createElement("h3");
+    remainingTitle.textContent = `Remaining cards (${state.deck.length})`;
+    const usedTitle = document.createElement("h3");
+    usedTitle.textContent = `Used cards (${state.usedCards.length})`;
+    elements.deckViewerContent.append(remainingTitle, buildCardList([...state.deck].sort((a, b) => a.number - b.number)), usedTitle, buildCardList(state.usedCards));
+  } else {
+    const note = document.createElement("p");
+    note.className = "modal-note";
+    note.textContent = "All cards are available every draw.";
+    elements.deckViewerContent.append(note, buildCardList(ROUTINE_CARDS));
+  }
+
+  openModal(elements.deckModal, elements.closeDeckModal);
+}
+
+function openScheduleViewer() {
+  elements.scheduleContent.innerHTML = "";
+
+  if (state.history.length === 0) {
+    const empty = document.createElement("p");
+    empty.className = "modal-note";
+    empty.textContent = "Complete a sentence turn to add it to your schedule.";
+    elements.scheduleContent.append(empty);
+    openModal(elements.scheduleModal, elements.closeScheduleModal);
+    return;
+  }
+
+  const sortedEntries = [...state.history].sort((a, b) => minutesAfterMidnight(a.time, a.ampm) - minutesAfterMidnight(b.time, b.ampm));
+  const shownEntries = sortedEntries.slice(0, 12);
+  const list = document.createElement("ol");
+  list.className = "schedule-list";
+
+  shownEntries.forEach((entry) => {
+    const item = document.createElement("li");
+    item.textContent = `${entry.time} ${entry.ampm} - ${entry.phrase} - ${formatPoints(entry.points)}`;
+    list.append(item);
+  });
+
+  elements.scheduleContent.append(list);
+  if (sortedEntries.length > 12) {
+    const note = document.createElement("p");
+    note.className = "modal-note";
+    note.textContent = "Showing first 12 items.";
+    elements.scheduleContent.append(note);
+  }
+
+  openModal(elements.scheduleModal, elements.closeScheduleModal);
+}
+
+function openModal(modal, focusTarget) {
+  modal.hidden = false;
+  focusTarget.focus();
+}
+
+function closeModal(modal, returnFocusTarget) {
+  modal.hidden = true;
+  if (returnFocusTarget) {
+    returnFocusTarget.focus();
+  }
 }
 
 // ---------- Animated actions ----------
@@ -453,8 +602,9 @@ async function drawRoutineCard() {
 
 // ---------- Turn control ----------
 async function runSafely(action, options = {}) {
-  const { addPointsAfter = false, resultChanges = false } = options;
-  if (state.isAnimating) {
+  const { resultChanges = false } = options;
+  if (state.isAnimating || isRoundFinished()) {
+    updateFinishedState();
     return;
   }
 
@@ -464,24 +614,22 @@ async function runSafely(action, options = {}) {
 
   try {
     await action();
-    if (addPointsAfter && state.card) {
-      state.turn += 1;
-      state.totalPoints += state.card.points;
-      state.thisTurnPoints = state.card.points;
-      updateScoreDisplay();
-      animateScore(state.card.points);
-      addHistoryEntry();
-      markCurrentResultSaved();
-    } else if (resultChanges) {
+    if (resultChanges) {
       markCurrentResultChanged();
     }
   } finally {
     state.isAnimating = false;
     setButtonsDisabled(false);
+    updateFinishedState();
   }
 }
 
 function newTurn() {
+  if (hasUnsavedCurrentResult()) {
+    updateFinishedState();
+    return;
+  }
+
   runSafely(async () => {
     await rollTime();
     await wait(BETWEEN_ANIMATION_PAUSE);
@@ -489,20 +637,10 @@ function newTurn() {
     await wait(BETWEEN_ANIMATION_PAUSE);
     await drawRoutineCard();
     await wait(BETWEEN_ANIMATION_PAUSE);
-  }, { addPointsAfter: true });
+  }, { resultChanges: true });
 }
 
-function resetGame() {
-  const confirmed = window.confirm("Reset the total points and turn history for this device?");
-  if (!confirmed) {
-    return;
-  }
-
-  state = getFreshState();
-  if (getSetting("cardMode") === "shuffle") {
-    ensureDeck();
-  }
-
+function resetCurrentResultDisplay() {
   elements.timeResult.textContent = "--:--";
   elements.ampmResult.textContent = "AM/PM";
   elements.timeModeNote.textContent = "Fair 1–12 time roll";
@@ -515,9 +653,21 @@ function resetGame() {
   elements.routinePhrase.textContent = "Tap New Turn";
   elements.cardPoints.textContent = "-- points";
   updateSentenceHints("_____");
+}
+
+function resetGame() {
+  const confirmed = window.confirm("Reset the total points and completed turn history for this device?");
+  if (!confirmed) {
+    return;
+  }
+
+  state = getFreshState();
+  resetDeckState();
+  resetCurrentResultDisplay();
   updateScoreDisplay();
-  updateDeckCount();
   renderHistory();
+  setHistoryExpanded(false);
+  updateFinishedState();
 }
 
 // ---------- Event listeners ----------
@@ -534,6 +684,12 @@ document.addEventListener("click", (event) => {
 document.addEventListener("keydown", (event) => {
   if (event.key === "Escape") {
     setSettingsOpen(false);
+    if (!elements.deckModal.hidden) {
+      closeModal(elements.deckModal, elements.deckButton);
+    }
+    if (!elements.scheduleModal.hidden) {
+      closeModal(elements.scheduleModal, elements.scheduleButton);
+    }
   }
 });
 
@@ -550,26 +706,50 @@ elements.flipAmpmButton.addEventListener("click", () => runSafely(flipAmpm, { re
 elements.drawCardButton.addEventListener("click", () => runSafely(drawRoutineCard, { resultChanges: true }));
 elements.addPointsButton.addEventListener("click", addCurrentPoints);
 elements.resetButton.addEventListener("click", resetGame);
+elements.historyToggle.addEventListener("click", () => setHistoryExpanded(!state.historyExpanded));
+elements.deckButton.addEventListener("click", openDeckViewer);
+elements.scheduleButton.addEventListener("click", openScheduleViewer);
+elements.closeDeckModal.addEventListener("click", () => closeModal(elements.deckModal, elements.deckButton));
+elements.closeScheduleModal.addEventListener("click", () => closeModal(elements.scheduleModal, elements.scheduleButton));
+
+elements.deckModal.addEventListener("click", (event) => {
+  if (event.target === elements.deckModal) {
+    closeModal(elements.deckModal, elements.deckButton);
+  }
+});
+
+elements.scheduleModal.addEventListener("click", (event) => {
+  if (event.target === elements.scheduleModal) {
+    closeModal(elements.scheduleModal, elements.scheduleButton);
+  }
+});
 
 elements.settingsForm.addEventListener("change", (event) => {
   if (event.target.name === "cardMode") {
-    state.deck = [];
-    if (getSetting("cardMode") === "shuffle") {
-      ensureDeck();
-    }
+    resetDeckState();
   }
   if (event.target.name === "appearance") {
     applyAppearance();
   }
+  if (event.target.name === "displayMode") {
+    applyDisplayMode();
+  }
+  if (event.target.name === "roundLimit") {
+    updateFinishedState();
+  }
   updateHintsVisibility();
   updateDeckCount();
+  updateScoreDisplay();
 });
 
 // ---------- First screen setup ----------
 loadSavedAppearance();
-ensureDeck();
+applyDisplayMode();
+resetDeckState();
 updateSentenceHints("_____");
 updateScoreDisplay();
 updateHintsVisibility();
 updateDeckCount();
 renderHistory();
+setHistoryExpanded(false);
+updateFinishedState();

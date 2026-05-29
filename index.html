@@ -49,6 +49,21 @@
             </fieldset>
 
             <fieldset>
+              <legend>Round limit</legend>
+              <label><input type="radio" name="roundLimit" value="none"> No limit</label>
+              <label><input type="radio" name="roundLimit" value="6"> 6 turns</label>
+              <label><input type="radio" name="roundLimit" value="8"> 8 turns</label>
+              <label><input type="radio" name="roundLimit" value="10"> 10 turns</label>
+              <label><input type="radio" name="roundLimit" value="12" checked> 12 turns</label>
+            </fieldset>
+
+            <fieldset>
+              <legend>Mode</legend>
+              <label><input type="radio" name="displayMode" value="student" checked> Student Mode</label>
+              <label><input type="radio" name="displayMode" value="demo"> Teacher Demo Mode</label>
+            </fieldset>
+
+            <fieldset>
               <legend>Appearance</legend>
               <label><input type="radio" name="appearance" value="light" checked> Light mode</label>
               <label><input type="radio" name="appearance" value="dark"> Dark mode</label>
@@ -86,9 +101,12 @@
 
         <article id="cardPanel" class="result-panel card-panel">
           <span class="label">Routine Card</span>
-          <div id="deck" class="deck" aria-hidden="true">
-            <span></span><span></span><span></span>
-          </div>
+          <button id="deckButton" class="deck-button" type="button" aria-haspopup="dialog" aria-controls="deckModal">
+            <span id="deck" class="deck" aria-hidden="true">
+              <span></span><span></span><span></span>
+            </span>
+            <span class="visually-hidden">View deck</span>
+          </button>
           <div id="routineCard" class="routine-card">
             <span id="cardNumber" class="card-number">Card --</span>
             <strong id="routinePhrase">Tap New Turn</strong>
@@ -145,21 +163,54 @@
             <button id="rollTimeButton" type="button">Roll Time</button>
             <button id="flipAmpmButton" type="button">Flip AM / PM</button>
             <button id="drawCardButton" type="button">Draw Routine Card</button>
-            <button id="addPointsButton" class="add-points-button" type="button" disabled>Add Current Points</button>
+            <button id="addPointsButton" class="add-points-button" type="button" disabled>I wrote my sentence: Add points</button>
           </div>
           <p class="manual-note">Manual buttons change the current result only.</p>
         </div>
       </section>
+
+      <section id="finishedPanel" class="finished-panel" aria-live="polite" hidden>
+        <strong>Finished!</strong>
+        <span id="finishedTotal">Total: 0 points</span>
+        <p>Check your worksheet. Choose your best sentence. Use Reset Game to play again.</p>
+      </section>
     </section>
 
-    <aside class="history-panel" aria-labelledby="history-title">
-      <div class="history-heading">
-        <h2 id="history-title">History</h2>
-        <span id="historyCount">0 turns</span>
+    <aside class="history-panel is-collapsed" aria-labelledby="history-title">
+      <button id="historyToggle" class="history-heading" type="button" aria-expanded="false" aria-controls="historyBody">
+        <span class="history-title-wrap">
+          <strong id="history-title">History</strong>
+          <span id="historyCount">0 turns</span>
+        </span>
+        <span id="historyToggleText">Expand</span>
+      </button>
+      <p id="latestHistory" class="latest-history">No completed turns yet.</p>
+      <div id="historyBody" class="history-body" hidden>
+        <ol id="historyList" class="history-list"></ol>
       </div>
-      <ol id="historyList" class="history-list"></ol>
+      <button id="scheduleButton" class="schedule-button" type="button">View Schedule</button>
     </aside>
   </main>
+
+  <div id="deckModal" class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="deckModalTitle" hidden>
+    <div class="modal-card compact-modal">
+      <div class="modal-heading">
+        <h2 id="deckModalTitle">Deck Viewer</h2>
+        <button id="closeDeckModal" class="modal-close" type="button" aria-label="Close deck viewer">×</button>
+      </div>
+      <div id="deckViewerContent" class="modal-content"></div>
+    </div>
+  </div>
+
+  <div id="scheduleModal" class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="scheduleModalTitle" hidden>
+    <div class="modal-card">
+      <div class="modal-heading">
+        <h2 id="scheduleModalTitle">My Schedule</h2>
+        <button id="closeScheduleModal" class="modal-close" type="button" aria-label="Close schedule">×</button>
+      </div>
+      <div id="scheduleContent" class="modal-content"></div>
+    </div>
+  </div>
 
   <script src="script.js"></script>
 </body>

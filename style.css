@@ -765,3 +765,293 @@ legend {
     transition-duration: 0.001ms !important;
   }
 }
+
+/* ---------- Round finish, clickable deck, modals, and compact history ---------- */
+.deck-button {
+  display: grid;
+  place-items: center;
+  width: auto;
+  min-height: 0;
+  margin: 0.55rem auto;
+  padding: 0.1rem;
+  color: inherit;
+  background: transparent;
+  box-shadow: none;
+}
+
+.deck-button:hover:not(:disabled),
+.deck-button:focus-visible:not(:disabled) {
+  transform: translateY(-1px) scale(1.03);
+  filter: none;
+  outline: 3px solid rgba(35, 100, 170, 0.35);
+  outline-offset: 4px;
+}
+
+.deck-button:active:not(:disabled) {
+  transform: translateY(0) scale(1);
+  box-shadow: none;
+}
+
+.deck-button .deck {
+  margin: 0;
+}
+
+.finished-panel {
+  display: grid;
+  gap: 0.25rem;
+  border: 3px solid var(--green);
+  border-radius: 18px;
+  padding: 0.75rem 1rem;
+  background: var(--hint-bg);
+  color: var(--hint-text);
+  text-align: center;
+}
+
+.finished-panel[hidden] {
+  display: none;
+}
+
+.finished-panel strong {
+  color: var(--green);
+  font-size: clamp(1.35rem, 2vw, 2rem);
+}
+
+.finished-panel span {
+  color: var(--ink);
+  font-size: 1.2rem;
+  font-weight: 900;
+}
+
+.finished-panel p {
+  margin: 0;
+  font-weight: 800;
+}
+
+.history-panel {
+  grid-template-rows: auto auto minmax(0, 1fr) auto;
+  gap: 0.65rem;
+}
+
+.history-heading {
+  width: 100%;
+  min-height: 0;
+  padding: 0;
+  color: var(--ink);
+  background: transparent;
+  box-shadow: none;
+  text-align: left;
+}
+
+.history-heading:hover:not(:disabled),
+.history-heading:focus-visible:not(:disabled) {
+  transform: none;
+  filter: none;
+}
+
+.history-title-wrap {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0;
+  background: transparent;
+  color: var(--ink);
+}
+
+#history-title {
+  font-size: 1.25rem;
+}
+
+#historyToggleText {
+  border-radius: 999px;
+  padding: 0.35rem 0.75rem;
+  color: #ffffff;
+  background: var(--blue);
+  font-size: 0.9rem;
+  font-weight: 900;
+}
+
+.latest-history {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.95rem;
+  font-weight: 800;
+}
+
+.history-body {
+  min-height: 0;
+  overflow: hidden;
+  animation: history-expand 0.2s ease-out;
+}
+
+.history-panel.is-collapsed .history-body {
+  display: none;
+}
+
+.history-panel.is-collapsed {
+  align-content: start;
+}
+
+.history-panel.is-expanded .history-body {
+  display: block;
+}
+
+.schedule-button {
+  min-height: 44px;
+  background: var(--green);
+  box-shadow: 0 4px 0 #276749;
+}
+
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 30;
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+  background: rgba(15, 23, 42, 0.58);
+}
+
+.modal-backdrop[hidden] {
+  display: none;
+}
+
+.modal-card {
+  width: min(640px, 100%);
+  max-height: min(760px, calc(100vh - 2rem));
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  border: 2px solid var(--border);
+  border-radius: 20px;
+  background: var(--card);
+  color: var(--ink);
+  box-shadow: var(--shadow);
+  overflow: hidden;
+}
+
+.compact-modal {
+  width: min(760px, 100%);
+}
+
+.modal-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.85rem 1rem;
+  border-bottom: 2px solid var(--border);
+  background: var(--panel);
+}
+
+.modal-heading h2 {
+  margin: 0;
+  font-size: 1.35rem;
+}
+
+.modal-close {
+  display: grid;
+  place-items: center;
+  width: 42px;
+  min-height: 42px;
+  padding: 0;
+  border-radius: 50%;
+  background: #64748b;
+  box-shadow: 0 3px 0 #475569;
+  font-size: 1.6rem;
+  line-height: 1;
+}
+
+.modal-content {
+  min-height: 0;
+  overflow: auto;
+  padding: 1rem;
+}
+
+.modal-content h3 {
+  margin: 0.25rem 0 0.5rem;
+  color: var(--blue-dark);
+}
+
+.card-mini-list,
+.schedule-list {
+  display: grid;
+  gap: 0.4rem;
+  margin: 0 0 0.9rem;
+  padding-left: 1.35rem;
+}
+
+.card-mini-list li,
+.schedule-list li {
+  border-left: 4px solid var(--blue);
+  border-radius: 9px;
+  padding: 0.45rem 0.55rem;
+  background: var(--history-item-bg);
+  font-weight: 800;
+}
+
+.modal-note {
+  margin: 0 0 0.8rem;
+  color: var(--muted);
+  font-weight: 800;
+}
+
+body.demo-mode .result-panel {
+  min-height: 315px;
+}
+
+body.demo-mode .big-result {
+  font-size: clamp(4.4rem, 7.2vw, 8.1rem);
+}
+
+body.demo-mode .coin {
+  width: clamp(130px, 9vw, 168px);
+  height: clamp(130px, 9vw, 168px);
+  font-size: clamp(2.25rem, 3vw, 3rem);
+}
+
+body.demo-mode .routine-card {
+  min-height: 168px;
+}
+
+body.demo-mode .routine-card strong {
+  font-size: clamp(1.8rem, 3vw, 3rem);
+}
+
+body.demo-mode .score-board strong,
+body.demo-mode .points-line {
+  font-size: clamp(1.8rem, 2.8vw, 2.9rem);
+}
+
+@keyframes history-expand {
+  from { max-height: 0; opacity: 0; }
+  to { max-height: 520px; opacity: 1; }
+}
+
+/* Keep Teacher Demo Mode readable without crowding the controls. */
+body.demo-mode .game-card {
+  gap: 0.65rem;
+}
+
+body.demo-mode .button-area {
+  grid-template-columns: minmax(170px, 0.34fr) minmax(0, 1fr);
+  gap: 0.65rem;
+  align-items: start;
+}
+
+body.demo-mode .primary-button {
+  min-height: 54px;
+  padding: 0.55rem 0.8rem;
+  font-size: clamp(1.1rem, 1.35vw, 1.4rem);
+}
+
+body.demo-mode .small-buttons {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.5rem;
+}
+
+body.demo-mode .small-buttons button {
+  min-height: 44px;
+  padding: 0.5rem 0.65rem;
+  font-size: clamp(0.9rem, 1vw, 1.05rem);
+  line-height: 1.15;
+  white-space: normal;
+}
