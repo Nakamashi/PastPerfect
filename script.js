@@ -100,6 +100,13 @@ const elements = {
   closeScheduleModal: document.querySelector("#closeScheduleModal")
 };
 
+const gameplayButtons = [
+  elements.newTurnButton,
+  elements.rollTimeButton,
+  elements.flipAmpmButton,
+  elements.drawCardButton
+];
+
 const hintData = [
   { element: elements.hintYet, keyword: "yet", buildSentence: (phrase) => `I haven’t ${phrase} yet.` },
   { element: elements.hintAlready, keyword: "already", buildSentence: (phrase) => `I have already ${phrase}.` },
