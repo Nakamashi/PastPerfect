@@ -143,6 +143,7 @@ function getFreshState() {
     history: [],
     deck: [],
     usedCards: [],
+    tableSlots: [],
     isAnimating: false,
     currentResultSaved: true,
     hasTimeResult: false,
@@ -159,6 +160,26 @@ function randomInt(min, max) {
 
 function wait(milliseconds) {
   return new Promise((resolve) => setTimeout(resolve, milliseconds));
+}
+
+async function runDeceleratingPreview(duration, updatePreview) {
+  let elapsed = 0;
+  let delay = 75;
+
+  while (elapsed < duration) {
+    updatePreview();
+    await wait(delay);
+    elapsed += delay;
+
+    const progress = elapsed / duration;
+    if (progress > 0.82) {
+      delay = 280;
+    } else if (progress > 0.62) {
+      delay = 170;
+    } else if (progress > 0.42) {
+      delay = 110;
+    }
+  }
 }
 
 function shouldAnimate() {
@@ -212,12 +233,14 @@ function ensureDeck() {
   if (state.deck.length === 0) {
     state.usedCards = [];
     state.deck = shuffleArray(ROUTINE_CARDS);
+    state.tableSlots = [...state.deck];
   }
 }
 
 function resetDeckState() {
   state.deck = [];
   state.usedCards = [];
+  state.tableSlots = [];
   if (getSetting("cardMode") === "shuffle") {
     ensureDeck();
   }
@@ -365,21 +388,24 @@ function generateAmpm() {
   return Math.random() < 0.5 ? "AM" : "PM";
 }
 
-function getAvailableCardsForTable() {
+function getCardSlotsForTable() {
   if (getSetting("cardMode") === "shuffle") {
     ensureDeck();
-    return [...state.deck].sort((a, b) => a.number - b.number);
+    return state.tableSlots;
   }
   return ROUTINE_CARDS;
 }
 
-function chooseCard(cardNumber) {
+function chooseCard(cardNumber, slotIndex) {
   const number = Number(cardNumber);
   if (getSetting("cardMode") === "shuffle") {
     ensureDeck();
-    const deckIndex = state.deck.findIndex((card) => card.number === number);
-    if (deckIndex === -1) return null;
-    const [card] = state.deck.splice(deckIndex, 1);
+    const index = Number(slotIndex);
+    const card = state.tableSlots[index];
+    if (!card || card.number !== number) return null;
+
+    state.tableSlots[index] = null;
+    state.deck = state.deck.filter((deckCard) => deckCard.number !== number);
     state.usedCards.unshift(card);
     return card;
   }
@@ -673,15 +699,15 @@ async function rollTimeOnDiceScreen() {
   elements.diceDisplay.classList.add("rolling");
 
   if (duration > 0) {
-    const interval = setInterval(() => updateActionDiceDisplay(generateTimeRoll()), 85);
-    await wait(duration);
-    clearInterval(interval);
+    const settleTimer = setTimeout(() => elements.actionDiceDisplay.classList.add("is-decelerating"), duration * 0.62);
+    await runDeceleratingPreview(duration, () => updateActionDiceDisplay(generateTimeRoll()));
+    clearTimeout(settleTimer);
   }
 
   const finalRoll = generateTimeRoll();
   updateActionDiceDisplay(finalRoll);
   updateTimeDisplay(finalRoll);
-  elements.actionDiceDisplay.classList.remove("big-rolling");
+  elements.actionDiceDisplay.classList.remove("big-rolling", "is-decelerating");
   elements.diceDisplay.classList.remove("rolling");
   setActiveStep(elements.timePanel, false);
   state.isAnimating = false;
@@ -698,18 +724,18 @@ async function flipCoinOnCoinScreen() {
   elements.coin.classList.add("flipping");
 
   if (duration > 0) {
-    const interval = setInterval(() => {
+    const settleTimer = setTimeout(() => elements.actionCoin.classList.add("is-decelerating"), duration * 0.62);
+    await runDeceleratingPreview(duration, () => {
       elements.actionCoin.textContent = generateAmpm();
-    }, 90);
-    await wait(duration);
-    clearInterval(interval);
+    });
+    clearTimeout(settleTimer);
   }
 
   const result = generateAmpm();
   elements.actionCoin.textContent = result;
   elements.coinScreenResult.textContent = `${result} selected`;
   updateAmpmDisplay(result);
-  elements.actionCoin.classList.remove("big-flipping");
+  elements.actionCoin.classList.remove("big-flipping", "is-decelerating");
   elements.coin.classList.remove("flipping");
   setActiveStep(elements.coinPanel, false);
   state.isAnimating = false;
@@ -717,17 +743,27 @@ async function flipCoinOnCoinScreen() {
 }
 
 function renderCardTable() {
-  const availableCards = getAvailableCardsForTable();
+  const cardSlots = getCardSlotsForTable();
   elements.cardTable.innerHTML = "";
   elements.cardTableNote.textContent = getSetting("cardMode") === "shuffle"
-    ? `Shuffle mode: choose from ${availableCards.length} remaining cards. Used cards return after the deck runs out.`
+    ? `Shuffle mode: ${state.deck.length} cards remain. Blank spaces show cards already taken from the table.`
     : "Replacement mode: all 24 cards are available every draw.";
 
-  availableCards.forEach((card) => {
+  cardSlots.forEach((card, index) => {
+    if (!card) {
+      const emptySlot = document.createElement("div");
+      emptySlot.className = "table-card-empty";
+      emptySlot.setAttribute("aria-label", `Empty table space ${index + 1}`);
+      emptySlot.textContent = "";
+      elements.cardTable.append(emptySlot);
+      return;
+    }
+
     const button = document.createElement("button");
     button.type = "button";
     button.className = "table-card";
     button.dataset.cardNumber = card.number;
+    button.dataset.slotIndex = index;
     button.innerHTML = `
       <span class="table-card-inner">
         <span class="table-card-back">?</span>
@@ -745,7 +781,7 @@ function renderCardTable() {
 
 async function selectTableCard(button) {
   if (state.isAnimating || state.hasCardResult || button.classList.contains("is-revealed") || isRoundFinished()) return;
-  const card = chooseCard(button.dataset.cardNumber);
+  const card = chooseCard(button.dataset.cardNumber, button.dataset.slotIndex);
   if (!card) return;
 
   state.isAnimating = true;
