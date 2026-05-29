@@ -75,44 +75,50 @@
     </div>
   </header>
 
-  <main class="app-shell">
+  <main id="mainScreen" class="app-shell app-view">
     <section class="game-card" aria-labelledby="result-title">
       <h1 id="result-title" class="visually-hidden">Current Turn</h1>
 
       <div class="result-grid" aria-live="polite">
-        <article id="timePanel" class="result-panel time-panel">
+        <article id="timePanel" class="result-panel time-panel clickable-panel" tabindex="0" role="button" aria-label="Open dice screen to roll time">
           <span class="label">Time</span>
+          <span id="timeStatus" class="status-pill incomplete">Not rolled</span>
           <div class="time-display">
             <span id="timeResult" class="big-result">--:--</span>
             <span id="ampmResult" class="ampm-badge">AM/PM</span>
           </div>
-          <p id="timeModeNote" class="helper-text">Fair 1–12 time roll</p>
+          <p id="timeModeNote" class="helper-text">Click to roll time.</p>
           <div id="diceDisplay" class="dice-display" aria-hidden="true">
             <span class="die">?</span>
             <span class="die second-die is-hidden">?</span>
           </div>
+          <p id="timeLockNote" class="panel-action-hint">Click to roll time.</p>
         </article>
 
-        <article id="coinPanel" class="result-panel coin-panel">
+        <article id="coinPanel" class="result-panel coin-panel clickable-panel" tabindex="0" role="button" aria-label="Open coin screen to flip AM or PM">
           <span class="label">AM / PM Coin</span>
+          <span id="ampmStatus" class="status-pill incomplete">Not flipped</span>
           <div id="coin" class="coin" aria-hidden="true">?</div>
-          <p id="coinText" class="medium-result">Ready to flip</p>
+          <p id="coinText" class="medium-result">Not flipped</p>
+          <p id="coinLockNote" class="panel-action-hint">Click to flip AM / PM.</p>
         </article>
 
-        <article id="cardPanel" class="result-panel card-panel">
+        <article id="cardPanel" class="result-panel card-panel clickable-panel" tabindex="0" role="button" aria-label="Open card table screen to choose a routine card">
           <span class="label">Routine Card</span>
-          <button id="deckButton" class="deck-button" type="button" aria-haspopup="dialog" aria-controls="deckModal">
-            <span id="deck" class="deck" aria-hidden="true">
+          <span id="cardStatus" class="status-pill incomplete">Not chosen</span>
+          <div id="deckButton" class="deck-button" aria-hidden="true">
+            <span id="deck" class="deck">
               <span></span><span></span><span></span>
             </span>
-            <span class="visually-hidden">View deck</span>
-          </button>
+          </div>
           <div id="routineCard" class="routine-card">
             <span id="cardNumber" class="card-number">Card --</span>
-            <strong id="routinePhrase">Tap New Turn</strong>
+            <strong id="routinePhrase">Not chosen</strong>
             <span id="cardPoints" class="points-line">-- points</span>
           </div>
-          <p id="deckCount" class="helper-text">Shuffle deck: 24 cards left</p>
+          <p id="deckCount" class="helper-text deck-count-text">Shuffle deck: 24 cards left</p>
+          <button id="viewDeckListButton" class="link-button deck-list-button" type="button" aria-haspopup="dialog" aria-controls="deckModal">View deck list</button>
+          <p id="cardLockNote" class="panel-action-hint">Click to choose a card.</p>
         </article>
       </div>
 
@@ -156,17 +162,10 @@
         </section>
       </div>
 
-      <section class="button-area" aria-label="Game controls">
+      <section class="button-area streamlined-controls" aria-label="Game controls">
         <button id="newTurnButton" class="primary-button" type="button">New Turn</button>
-        <div class="manual-controls">
-          <div class="small-buttons">
-            <button id="rollTimeButton" type="button">Roll Time</button>
-            <button id="flipAmpmButton" type="button">Flip AM / PM</button>
-            <button id="drawCardButton" type="button">Draw Routine Card</button>
-            <button id="addPointsButton" class="add-points-button" type="button" disabled>I wrote my sentence: Add points</button>
-          </div>
-          <p class="manual-note">Manual buttons change the current result only.</p>
-        </div>
+        <button id="addPointsButton" class="add-points-button" type="button" disabled>I wrote my sentence: Add points</button>
+        <p id="scoringHelp" class="manual-note">Complete dice, coin, and card first.</p>
       </section>
 
       <section id="finishedPanel" class="finished-panel" aria-live="polite" hidden>
@@ -191,6 +190,68 @@
       <button id="scheduleButton" class="schedule-button" type="button">View Schedule</button>
     </aside>
   </main>
+
+
+  <section id="diceScreen" class="action-screen app-view" aria-labelledby="diceScreenTitle" hidden>
+    <div class="action-card">
+      <div class="action-heading">
+        <div>
+          <p class="screen-kicker">Step 1</p>
+          <h1 id="diceScreenTitle">Roll the Time</h1>
+        </div>
+        <button id="backFromDice" class="secondary-button" type="button">Return to Main Screen</button>
+      </div>
+      <div class="action-visual dice-visual">
+        <div id="actionDiceDisplay" class="action-dice-display" aria-live="polite">
+          <span id="actionDieOne" class="action-die">?</span>
+          <span id="actionDieTwo" class="action-die is-hidden">?</span>
+        </div>
+        <p id="diceScreenResult" class="action-result">Not rolled yet.</p>
+      </div>
+      <div class="action-buttons">
+        <button id="actionRollDiceButton" class="primary-button" type="button">Roll Dice</button>
+        <button id="returnAfterDice" class="secondary-button" type="button">Use Result and Return</button>
+      </div>
+    </div>
+  </section>
+
+  <section id="coinScreen" class="action-screen app-view" aria-labelledby="coinScreenTitle" hidden>
+    <div class="action-card">
+      <div class="action-heading">
+        <div>
+          <p class="screen-kicker">Step 2</p>
+          <h1 id="coinScreenTitle">Flip AM / PM</h1>
+        </div>
+        <button id="backFromCoin" class="secondary-button" type="button">Return to Main Screen</button>
+      </div>
+      <div class="action-visual coin-visual">
+        <div id="actionCoin" class="action-coin" aria-live="polite">?</div>
+        <p id="coinScreenResult" class="action-result">Not flipped yet.</p>
+      </div>
+      <div class="action-buttons">
+        <button id="actionFlipCoinButton" class="primary-button" type="button">Flip Coin</button>
+        <button id="returnAfterCoin" class="secondary-button" type="button">Use Result and Return</button>
+      </div>
+    </div>
+  </section>
+
+  <section id="cardScreen" class="action-screen app-view" aria-labelledby="cardScreenTitle" hidden>
+    <div class="action-card card-table-card">
+      <div class="action-heading">
+        <div>
+          <p class="screen-kicker">Step 3</p>
+          <h1 id="cardScreenTitle">Choose a Routine Card</h1>
+        </div>
+        <button id="backFromCard" class="secondary-button" type="button">Return to Main Screen</button>
+      </div>
+      <p id="cardTableNote" class="action-note">Choose one face-down card. It will not score until you write your sentence and click Add points.</p>
+      <div id="cardTable" class="card-table" aria-live="polite"></div>
+      <p id="cardScreenResult" class="action-result">No card chosen yet.</p>
+      <div class="action-buttons">
+        <button id="returnAfterCard" class="secondary-button" type="button">Use Result and Return</button>
+      </div>
+    </div>
+  </section>
 
   <div id="deckModal" class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="deckModalTitle" hidden>
     <div class="modal-card compact-modal">
