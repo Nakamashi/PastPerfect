@@ -174,9 +174,15 @@ function isRoundFinished() {
   return limit !== null && state.turn >= limit;
 }
 
+function hasUnsavedCurrentResult() {
+  return hasFullCurrentResult() && !state.currentResultSaved;
+}
+
 function setButtonsDisabled(disabled) {
-  gameplayButtons.forEach((button) => {
-    button.disabled = disabled || isRoundFinished();
+  const finished = isRoundFinished();
+  elements.newTurnButton.disabled = disabled || finished || hasUnsavedCurrentResult();
+  [elements.rollTimeButton, elements.flipAmpmButton, elements.drawCardButton].forEach((button) => {
+    button.disabled = disabled || finished;
   });
   updateAddPointsButton();
 }
@@ -391,12 +397,8 @@ function loadSavedAppearance() {
 }
 
 function updateFinishedState() {
-  const finished = isRoundFinished();
-  elements.finishedPanel.hidden = !finished;
-  gameplayButtons.forEach((button) => {
-    button.disabled = state.isAnimating || finished;
-  });
-  updateAddPointsButton();
+  elements.finishedPanel.hidden = !isRoundFinished();
+  setButtonsDisabled(state.isAnimating);
 }
 
 function renderHistory() {
@@ -468,11 +470,11 @@ function setHistoryExpanded(isExpanded) {
 }
 
 function buildCardList(cards) {
-  const list = document.createElement("ol");
+  const list = document.createElement("ul");
   list.className = "card-mini-list";
   cards.forEach((card) => {
     const item = document.createElement("li");
-    item.textContent = `${card.number}. ${card.phrase} - ${formatPoints(card.points)}`;
+    item.textContent = `${card.phrase} - ${formatPoints(card.points)}`;
     list.append(item);
   });
   return list;
@@ -630,6 +632,11 @@ async function runSafely(action, options = {}) {
 }
 
 function newTurn() {
+  if (hasUnsavedCurrentResult()) {
+    updateFinishedState();
+    return;
+  }
+
   runSafely(async () => {
     await rollTime();
     await wait(BETWEEN_ANIMATION_PAUSE);

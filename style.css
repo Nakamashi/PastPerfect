@@ -1025,3 +1025,33 @@ body.demo-mode .points-line {
   from { max-height: 0; opacity: 0; }
   to { max-height: 520px; opacity: 1; }
 }
+
+/* Keep Teacher Demo Mode readable without crowding the controls. */
+body.demo-mode .game-card {
+  gap: 0.65rem;
+}
+
+body.demo-mode .button-area {
+  grid-template-columns: minmax(170px, 0.34fr) minmax(0, 1fr);
+  gap: 0.65rem;
+  align-items: start;
+}
+
+body.demo-mode .primary-button {
+  min-height: 54px;
+  padding: 0.55rem 0.8rem;
+  font-size: clamp(1.1rem, 1.35vw, 1.4rem);
+}
+
+body.demo-mode .small-buttons {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.5rem;
+}
+
+body.demo-mode .small-buttons button {
+  min-height: 44px;
+  padding: 0.5rem 0.65rem;
+  font-size: clamp(0.9rem, 1vw, 1.05rem);
+  line-height: 1.15;
+  white-space: normal;
+}
