@@ -26,26 +26,32 @@
 
             <fieldset>
               <legend>Minute mode</legend>
-              <label><input type="radio" name="minuteMode" value="zero" checked> Always :00</label>
-              <label><input type="radio" name="minuteMode" value="random"> Random 5-minute mark</label>
+              <label><input type="radio" name="minuteMode" value="zero"> Always :00</label>
+              <label><input type="radio" name="minuteMode" value="random" checked> Random 5-minute mark</label>
             </fieldset>
 
             <fieldset>
               <legend>Card draw mode</legend>
-              <label><input type="radio" name="cardMode" value="replacement" checked> Random with replacement</label>
-              <label><input type="radio" name="cardMode" value="shuffle"> Shuffle deck</label>
+              <label><input type="radio" name="cardMode" value="replacement"> Random with replacement</label>
+              <label><input type="radio" name="cardMode" value="shuffle" checked> Shuffle deck</label>
             </fieldset>
 
             <fieldset>
               <legend>Sentence hints</legend>
-              <label><input type="radio" name="hints" value="on" checked> On</label>
-              <label><input type="radio" name="hints" value="off"> Off</label>
+              <label><input type="radio" name="hints" value="on"> On</label>
+              <label><input type="radio" name="hints" value="off" checked> Off</label>
             </fieldset>
 
             <fieldset>
               <legend>Animations</legend>
               <label><input type="radio" name="animations" value="on" checked> On</label>
               <label><input type="radio" name="animations" value="off"> Off</label>
+            </fieldset>
+
+            <fieldset>
+              <legend>Appearance</legend>
+              <label><input type="radio" name="appearance" value="light" checked> Light mode</label>
+              <label><input type="radio" name="appearance" value="dark"> Dark mode</label>
             </fieldset>
           </form>
         </div>
@@ -88,17 +94,33 @@
             <strong id="routinePhrase">Tap New Turn</strong>
             <span id="cardPoints" class="points-line">-- points</span>
           </div>
-          <p id="deckCount" class="helper-text">Random draw with replacement</p>
+          <p id="deckCount" class="helper-text">Shuffle deck: 24 cards left</p>
         </article>
       </div>
 
       <div class="practice-row">
         <section id="sentenceHints" class="sentence-hints" aria-labelledby="hints-title">
           <h2 id="hints-title">Sentence Hints</h2>
+          <p class="hint-instruction">Click a hint to check. Click again to hide it.</p>
           <ul>
-            <li id="hintYet">I haven’t _____ yet.</li>
-            <li id="hintAlready">I have already _____.</li>
-            <li id="hintJust">I have just _____.</li>
+            <li>
+              <button id="hintYet" class="hint-card" type="button" aria-pressed="false">
+                <span class="hint-label">yet</span>
+                <span class="hint-sentence">I haven’t <span class="hint-phrase">_____</span> yet.</span>
+              </button>
+            </li>
+            <li>
+              <button id="hintAlready" class="hint-card" type="button" aria-pressed="false">
+                <span class="hint-label">already</span>
+                <span class="hint-sentence">I have already <span class="hint-phrase">_____</span>.</span>
+              </button>
+            </li>
+            <li>
+              <button id="hintJust" class="hint-card" type="button" aria-pressed="false">
+                <span class="hint-label">just</span>
+                <span class="hint-sentence">I have just <span class="hint-phrase">_____</span>.</span>
+              </button>
+            </li>
           </ul>
           <p>Choose the sentence that matches your time and your real daily routine.</p>
         </section>
@@ -118,10 +140,14 @@
 
       <section class="button-area" aria-label="Game controls">
         <button id="newTurnButton" class="primary-button" type="button">New Turn</button>
-        <div class="small-buttons">
-          <button id="rollTimeButton" type="button">Roll Time</button>
-          <button id="flipAmpmButton" type="button">Flip AM / PM</button>
-          <button id="drawCardButton" type="button">Draw Routine Card</button>
+        <div class="manual-controls">
+          <div class="small-buttons">
+            <button id="rollTimeButton" type="button">Roll Time</button>
+            <button id="flipAmpmButton" type="button">Flip AM / PM</button>
+            <button id="drawCardButton" type="button">Draw Routine Card</button>
+            <button id="addPointsButton" class="add-points-button" type="button" disabled>Add Current Points</button>
+          </div>
+          <p class="manual-note">Manual buttons change the current result only.</p>
         </div>
       </section>
     </section>
