@@ -33,9 +33,9 @@ const ROUTINE_CARDS = [
 ];
 
 // ---------- Animation timing constants ----------
-const TIME_ROLL_DURATION = 1200;
-const COIN_FLIP_DURATION = 1200;
-const CARD_FLIP_DURATION = 750;
+const TIME_ROLL_DURATION = 2200;
+const COIN_FLIP_DURATION = 2200;
+const CARD_FLIP_DURATION = 1200;
 const MINUTES = ["00", "05", "10", "15", "20", "25", "30", "35", "40", "45", "50", "55"];
 const APPEARANCE_STORAGE_KEY = "dailyRoutineGameAppearance";
 const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -56,6 +56,9 @@ const elements = {
   timeResult: document.querySelector("#timeResult"),
   ampmResult: document.querySelector("#ampmResult"),
   timeModeNote: document.querySelector("#timeModeNote"),
+  timeLockNote: document.querySelector("#timeLockNote"),
+  coinLockNote: document.querySelector("#coinLockNote"),
+  cardLockNote: document.querySelector("#cardLockNote"),
   diceDisplay: document.querySelector("#diceDisplay"),
   firstDie: document.querySelector(".die"),
   secondDie: document.querySelector(".second-die"),
@@ -90,9 +93,6 @@ const elements = {
   settingsDropdown: document.querySelector("#settingsDropdown"),
   settingsForm: document.querySelector("#settingsForm"),
   newTurnButton: document.querySelector("#newTurnButton"),
-  rollTimeButton: document.querySelector("#rollTimeButton"),
-  flipAmpmButton: document.querySelector("#flipAmpmButton"),
-  drawCardButton: document.querySelector("#drawCardButton"),
   addPointsButton: document.querySelector("#addPointsButton"),
   scoringHelp: document.querySelector("#scoringHelp"),
   resetButton: document.querySelector("#resetButton"),
@@ -237,18 +237,28 @@ function setCompletionStatus(element, complete, incompleteText) {
 function updateActionAvailability() {
   const finished = isRoundFinished();
   const scoredFullTurn = state.currentResultSaved && hasFullCurrentResult();
-  const disableDuringAnimation = state.isAnimating || finished;
-  const disableActionPanels = disableDuringAnimation || scoredFullTurn;
-  elements.newTurnButton.disabled = disableDuringAnimation;
-  elements.rollTimeButton.disabled = disableActionPanels;
-  elements.flipAmpmButton.disabled = disableActionPanels;
-  elements.drawCardButton.disabled = disableActionPanels;
-  elements.actionRollDiceButton.disabled = disableActionPanels;
-  elements.actionFlipCoinButton.disabled = disableActionPanels;
-  elements.timePanel.classList.toggle("is-disabled", disableActionPanels);
-  elements.coinPanel.classList.toggle("is-disabled", disableActionPanels);
-  elements.cardPanel.classList.toggle("is-disabled", disableActionPanels);
+  const baseLocked = state.isAnimating || finished || scoredFullTurn;
+  const timeLocked = baseLocked || state.hasTimeResult;
+  const ampmLocked = baseLocked || state.hasAmpmResult;
+  const cardLocked = baseLocked || state.hasCardResult;
+
+  elements.newTurnButton.disabled = state.isAnimating || finished;
+  elements.actionRollDiceButton.disabled = timeLocked;
+  elements.actionFlipCoinButton.disabled = ampmLocked;
+  elements.timePanel.classList.toggle("is-disabled", timeLocked);
+  elements.coinPanel.classList.toggle("is-disabled", ampmLocked);
+  elements.cardPanel.classList.toggle("is-disabled", cardLocked);
+  elements.timePanel.classList.toggle("is-locked", state.hasTimeResult);
+  elements.coinPanel.classList.toggle("is-locked", state.hasAmpmResult);
+  elements.cardPanel.classList.toggle("is-locked", state.hasCardResult);
+  updateLockNotes();
   updateAddPointsButton();
+}
+
+function updateLockNotes() {
+  elements.timeLockNote.textContent = state.hasTimeResult ? "Locked for this turn." : "Click to roll time.";
+  elements.coinLockNote.textContent = state.hasAmpmResult ? "Locked for this turn." : "Click to flip AM / PM.";
+  elements.cardLockNote.textContent = state.hasCardResult ? "Locked for this turn." : "Click to choose a card.";
 }
 
 function updateAddPointsButton() {
@@ -308,19 +318,19 @@ function showMainScreen() {
 }
 
 function showDiceScreen() {
-  if (state.isAnimating || isRoundFinished() || (state.currentResultSaved && hasFullCurrentResult())) return;
+  if (state.isAnimating || state.hasTimeResult || isRoundFinished() || (state.currentResultSaved && hasFullCurrentResult())) return;
   showView(elements.diceScreen);
   elements.actionRollDiceButton.focus();
 }
 
 function showCoinScreen() {
-  if (state.isAnimating || isRoundFinished() || (state.currentResultSaved && hasFullCurrentResult())) return;
+  if (state.isAnimating || state.hasAmpmResult || isRoundFinished() || (state.currentResultSaved && hasFullCurrentResult())) return;
   showView(elements.coinScreen);
   elements.actionFlipCoinButton.focus();
 }
 
 function showCardScreen() {
-  if (state.isAnimating || isRoundFinished() || (state.currentResultSaved && hasFullCurrentResult())) return;
+  if (state.isAnimating || state.hasCardResult || isRoundFinished() || (state.currentResultSaved && hasFullCurrentResult())) return;
   renderCardTable();
   showView(elements.cardScreen);
 }
@@ -654,7 +664,7 @@ function setHistoryExpanded(isExpanded) {
 
 // ---------- Animated action screens ----------
 async function rollTimeOnDiceScreen() {
-  if (state.isAnimating || isRoundFinished()) return;
+  if (state.isAnimating || state.hasTimeResult || isRoundFinished()) return;
   state.isAnimating = true;
   updateActionAvailability();
   setActiveStep(elements.timePanel, true);
@@ -679,7 +689,7 @@ async function rollTimeOnDiceScreen() {
 }
 
 async function flipCoinOnCoinScreen() {
-  if (state.isAnimating || isRoundFinished()) return;
+  if (state.isAnimating || state.hasAmpmResult || isRoundFinished()) return;
   state.isAnimating = true;
   updateActionAvailability();
   setActiveStep(elements.coinPanel, true);
@@ -734,7 +744,7 @@ function renderCardTable() {
 }
 
 async function selectTableCard(button) {
-  if (state.isAnimating || button.classList.contains("is-revealed") || isRoundFinished()) return;
+  if (state.isAnimating || state.hasCardResult || button.classList.contains("is-revealed") || isRoundFinished()) return;
   const card = chooseCard(button.dataset.cardNumber);
   if (!card) return;
 
@@ -745,6 +755,9 @@ async function selectTableCard(button) {
     cardButton.disabled = true;
     if (cardButton !== button) cardButton.classList.add("is-dimmed");
   });
+  if (!shouldAnimate()) {
+    button.classList.add("no-animation");
+  }
   button.classList.add("is-revealed");
   elements.deck.classList.add("shuffling");
 
@@ -766,6 +779,12 @@ function newTurn() {
     updateScoreDisplay();
     return;
   }
+
+  if (!state.currentResultSaved && (state.hasTimeResult || state.hasAmpmResult || state.hasCardResult)) {
+    const confirmed = window.confirm("Start a fresh blank turn and abandon the current unsaved result?");
+    if (!confirmed) return;
+  }
+
   resetCurrentResultDisplay();
   updateScoreDisplay();
   showMainScreen();
@@ -850,9 +869,6 @@ elements.viewDeckListButton.addEventListener("click", (event) => {
 });
 
 elements.newTurnButton.addEventListener("click", newTurn);
-elements.rollTimeButton.addEventListener("click", showDiceScreen);
-elements.flipAmpmButton.addEventListener("click", showCoinScreen);
-elements.drawCardButton.addEventListener("click", showCardScreen);
 elements.addPointsButton.addEventListener("click", addCurrentPoints);
 elements.resetButton.addEventListener("click", resetGame);
 elements.historyToggle.addEventListener("click", () => setHistoryExpanded(!state.historyExpanded));

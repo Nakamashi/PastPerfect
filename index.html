@@ -92,6 +92,7 @@
             <span class="die">?</span>
             <span class="die second-die is-hidden">?</span>
           </div>
+          <p id="timeLockNote" class="panel-action-hint">Click to roll time.</p>
         </article>
 
         <article id="coinPanel" class="result-panel coin-panel clickable-panel" tabindex="0" role="button" aria-label="Open coin screen to flip AM or PM">
@@ -99,6 +100,7 @@
           <span id="ampmStatus" class="status-pill incomplete">Not flipped</span>
           <div id="coin" class="coin" aria-hidden="true">?</div>
           <p id="coinText" class="medium-result">Not flipped</p>
+          <p id="coinLockNote" class="panel-action-hint">Click to flip AM / PM.</p>
         </article>
 
         <article id="cardPanel" class="result-panel card-panel clickable-panel" tabindex="0" role="button" aria-label="Open card table screen to choose a routine card">
@@ -114,8 +116,9 @@
             <strong id="routinePhrase">Not chosen</strong>
             <span id="cardPoints" class="points-line">-- points</span>
           </div>
-          <p id="deckCount" class="helper-text">Shuffle deck: 24 cards left</p>
+          <p id="deckCount" class="helper-text deck-count-text">Shuffle deck: 24 cards left</p>
           <button id="viewDeckListButton" class="link-button deck-list-button" type="button" aria-haspopup="dialog" aria-controls="deckModal">View deck list</button>
+          <p id="cardLockNote" class="panel-action-hint">Click to choose a card.</p>
         </article>
       </div>
 
@@ -159,17 +162,10 @@
         </section>
       </div>
 
-      <section class="button-area" aria-label="Game controls">
+      <section class="button-area streamlined-controls" aria-label="Game controls">
         <button id="newTurnButton" class="primary-button" type="button">New Turn</button>
-        <div class="manual-controls">
-          <div class="small-buttons">
-            <button id="rollTimeButton" type="button">Roll Time</button>
-            <button id="flipAmpmButton" type="button">Flip AM / PM</button>
-            <button id="drawCardButton" type="button">Draw Routine Card</button>
-            <button id="addPointsButton" class="add-points-button" type="button" disabled>I wrote my sentence: Add points</button>
-          </div>
-          <p id="scoringHelp" class="manual-note">Complete dice, coin, and card first.</p>
-        </div>
+        <button id="addPointsButton" class="add-points-button" type="button" disabled>I wrote my sentence: Add points</button>
+        <p id="scoringHelp" class="manual-note">Complete dice, coin, and card first.</p>
       </section>
 
       <section id="finishedPanel" class="finished-panel" aria-live="polite" hidden>
