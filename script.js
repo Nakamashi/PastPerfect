@@ -33,23 +33,26 @@ const ROUTINE_CARDS = [
 ];
 
 // ---------- Animation timing constants ----------
-// Keep these values easy to edit. New Turn generates a result only; scoring happens after the student writes their sentence.
-const TIME_ROLL_DURATION = 1100;
-const COIN_FLIP_DURATION = 900;
-const CARD_SHUFFLE_DURATION = 1100;
-const QUICK_ANIMATION_DURATION = 450;
-const BETWEEN_ANIMATION_PAUSE = 350;
-
+const TIME_ROLL_DURATION = 1200;
+const COIN_FLIP_DURATION = 1200;
+const CARD_FLIP_DURATION = 750;
 const MINUTES = ["00", "05", "10", "15", "20", "25", "30", "35", "40", "45", "50", "55"];
 const APPEARANCE_STORAGE_KEY = "dailyRoutineGameAppearance";
 const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
 // ---------- Page elements ----------
 const elements = {
+  mainScreen: document.querySelector("#mainScreen"),
+  diceScreen: document.querySelector("#diceScreen"),
+  coinScreen: document.querySelector("#coinScreen"),
+  cardScreen: document.querySelector("#cardScreen"),
   turnNumber: document.querySelector("#turnNumber"),
   timePanel: document.querySelector("#timePanel"),
   coinPanel: document.querySelector("#coinPanel"),
   cardPanel: document.querySelector("#cardPanel"),
+  timeStatus: document.querySelector("#timeStatus"),
+  ampmStatus: document.querySelector("#ampmStatus"),
+  cardStatus: document.querySelector("#cardStatus"),
   timeResult: document.querySelector("#timeResult"),
   ampmResult: document.querySelector("#ampmResult"),
   timeModeNote: document.querySelector("#timeModeNote"),
@@ -58,13 +61,13 @@ const elements = {
   secondDie: document.querySelector(".second-die"),
   coin: document.querySelector("#coin"),
   coinText: document.querySelector("#coinText"),
-  deckButton: document.querySelector("#deckButton"),
   deck: document.querySelector("#deck"),
   routineCard: document.querySelector("#routineCard"),
   cardNumber: document.querySelector("#cardNumber"),
   routinePhrase: document.querySelector("#routinePhrase"),
   cardPoints: document.querySelector("#cardPoints"),
   deckCount: document.querySelector("#deckCount"),
+  viewDeckListButton: document.querySelector("#viewDeckListButton"),
   sentenceHints: document.querySelector("#sentenceHints"),
   hintYet: document.querySelector("#hintYet"),
   hintAlready: document.querySelector("#hintAlready"),
@@ -91,21 +94,32 @@ const elements = {
   flipAmpmButton: document.querySelector("#flipAmpmButton"),
   drawCardButton: document.querySelector("#drawCardButton"),
   addPointsButton: document.querySelector("#addPointsButton"),
+  scoringHelp: document.querySelector("#scoringHelp"),
   resetButton: document.querySelector("#resetButton"),
   deckModal: document.querySelector("#deckModal"),
   deckViewerContent: document.querySelector("#deckViewerContent"),
   closeDeckModal: document.querySelector("#closeDeckModal"),
   scheduleModal: document.querySelector("#scheduleModal"),
   scheduleContent: document.querySelector("#scheduleContent"),
-  closeScheduleModal: document.querySelector("#closeScheduleModal")
+  closeScheduleModal: document.querySelector("#closeScheduleModal"),
+  actionDieOne: document.querySelector("#actionDieOne"),
+  actionDieTwo: document.querySelector("#actionDieTwo"),
+  actionDiceDisplay: document.querySelector("#actionDiceDisplay"),
+  diceScreenResult: document.querySelector("#diceScreenResult"),
+  actionCoin: document.querySelector("#actionCoin"),
+  coinScreenResult: document.querySelector("#coinScreenResult"),
+  cardTable: document.querySelector("#cardTable"),
+  cardTableNote: document.querySelector("#cardTableNote"),
+  cardScreenResult: document.querySelector("#cardScreenResult"),
+  backFromDice: document.querySelector("#backFromDice"),
+  backFromCoin: document.querySelector("#backFromCoin"),
+  backFromCard: document.querySelector("#backFromCard"),
+  returnAfterDice: document.querySelector("#returnAfterDice"),
+  returnAfterCoin: document.querySelector("#returnAfterCoin"),
+  returnAfterCard: document.querySelector("#returnAfterCard"),
+  actionRollDiceButton: document.querySelector("#actionRollDiceButton"),
+  actionFlipCoinButton: document.querySelector("#actionFlipCoinButton")
 };
-
-const gameplayButtons = [
-  elements.newTurnButton,
-  elements.rollTimeButton,
-  elements.flipAmpmButton,
-  elements.drawCardButton
-];
 
 const hintData = [
   { element: elements.hintYet, keyword: "yet", buildSentence: (phrase) => `I haven’t ${phrase} yet.` },
@@ -131,6 +145,9 @@ function getFreshState() {
     usedCards: [],
     isAnimating: false,
     currentResultSaved: true,
+    hasTimeResult: false,
+    hasAmpmResult: false,
+    hasCardResult: false,
     historyExpanded: false
   };
 }
@@ -174,28 +191,6 @@ function isRoundFinished() {
   return limit !== null && state.turn >= limit;
 }
 
-function hasUnsavedCurrentResult() {
-  return hasFullCurrentResult() && !state.currentResultSaved;
-}
-
-function setButtonsDisabled(disabled) {
-  const finished = isRoundFinished();
-  elements.newTurnButton.disabled = disabled || finished || hasUnsavedCurrentResult();
-  [elements.rollTimeButton, elements.flipAmpmButton, elements.drawCardButton].forEach((button) => {
-    button.disabled = disabled || finished;
-  });
-  updateAddPointsButton();
-}
-
-function setActiveStep(panel, isActive) {
-  panel.classList.toggle("active-step", isActive && shouldAnimate());
-}
-
-function setSettingsOpen(isOpen) {
-  elements.settingsDropdown.hidden = !isOpen;
-  elements.settingsButton.setAttribute("aria-expanded", String(isOpen));
-}
-
 function formatPoints(points) {
   return `${points} ${points === 1 ? "point" : "points"}`;
 }
@@ -229,24 +224,60 @@ function resetDeckState() {
   updateDeckCount();
 }
 
-function markCurrentResultChanged() {
-  if (state.card) {
-    state.currentResultSaved = false;
-  }
-  updateAddPointsButton();
-}
-
-function markCurrentResultSaved() {
-  state.currentResultSaved = true;
-  updateAddPointsButton();
-}
-
 function hasFullCurrentResult() {
-  return Boolean(state.card && state.hour !== null && (state.ampm === "AM" || state.ampm === "PM"));
+  return state.hasTimeResult && state.hasAmpmResult && state.hasCardResult && Boolean(state.card);
+}
+
+function setCompletionStatus(element, complete, incompleteText) {
+  element.textContent = complete ? "Done" : incompleteText;
+  element.classList.toggle("done", complete);
+  element.classList.toggle("incomplete", !complete);
+}
+
+function updateActionAvailability() {
+  const finished = isRoundFinished();
+  const scoredFullTurn = state.currentResultSaved && hasFullCurrentResult();
+  const disableDuringAnimation = state.isAnimating || finished;
+  const disableActionPanels = disableDuringAnimation || scoredFullTurn;
+  elements.newTurnButton.disabled = disableDuringAnimation;
+  elements.rollTimeButton.disabled = disableActionPanels;
+  elements.flipAmpmButton.disabled = disableActionPanels;
+  elements.drawCardButton.disabled = disableActionPanels;
+  elements.actionRollDiceButton.disabled = disableActionPanels;
+  elements.actionFlipCoinButton.disabled = disableActionPanels;
+  elements.timePanel.classList.toggle("is-disabled", disableActionPanels);
+  elements.coinPanel.classList.toggle("is-disabled", disableActionPanels);
+  elements.cardPanel.classList.toggle("is-disabled", disableActionPanels);
+  updateAddPointsButton();
 }
 
 function updateAddPointsButton() {
-  elements.addPointsButton.disabled = state.isAnimating || !hasFullCurrentResult() || state.currentResultSaved || isRoundFinished();
+  const missing = [];
+  if (!state.hasTimeResult) missing.push("dice");
+  if (!state.hasAmpmResult) missing.push("coin");
+  if (!state.hasCardResult) missing.push("card");
+
+  const disabled = state.isAnimating || !hasFullCurrentResult() || state.currentResultSaved || isRoundFinished();
+  elements.addPointsButton.disabled = disabled;
+
+  if (isRoundFinished()) {
+    elements.scoringHelp.textContent = "Round limit reached. Reset Game to play again.";
+  } else if (state.currentResultSaved && hasFullCurrentResult()) {
+    elements.scoringHelp.textContent = "Turn scored. Click New Turn for a fresh blank turn.";
+  } else if (missing.length > 0) {
+    elements.scoringHelp.textContent = "Complete dice, coin, and card first.";
+  } else {
+    elements.scoringHelp.textContent = "Write or say your sentence, then add points.";
+  }
+}
+
+function setSettingsOpen(isOpen) {
+  elements.settingsDropdown.hidden = !isOpen;
+  elements.settingsButton.setAttribute("aria-expanded", String(isOpen));
+}
+
+function setActiveStep(panel, isActive) {
+  panel.classList.toggle("active-step", isActive && shouldAnimate());
 }
 
 function minutesAfterMidnight(time, ampm) {
@@ -261,6 +292,37 @@ function minutesAfterMidnight(time, ampm) {
   }
 
   return hour * 60 + minute;
+}
+
+// ---------- View switching ----------
+function showView(viewToShow) {
+  [elements.mainScreen, elements.diceScreen, elements.coinScreen, elements.cardScreen].forEach((view) => {
+    view.hidden = view !== viewToShow;
+  });
+  setSettingsOpen(false);
+}
+
+function showMainScreen() {
+  showView(elements.mainScreen);
+  elements.newTurnButton.focus();
+}
+
+function showDiceScreen() {
+  if (state.isAnimating || isRoundFinished() || (state.currentResultSaved && hasFullCurrentResult())) return;
+  showView(elements.diceScreen);
+  elements.actionRollDiceButton.focus();
+}
+
+function showCoinScreen() {
+  if (state.isAnimating || isRoundFinished() || (state.currentResultSaved && hasFullCurrentResult())) return;
+  showView(elements.coinScreen);
+  elements.actionFlipCoinButton.focus();
+}
+
+function showCardScreen() {
+  if (state.isAnimating || isRoundFinished() || (state.currentResultSaved && hasFullCurrentResult())) return;
+  renderCardTable();
+  showView(elements.cardScreen);
 }
 
 // ---------- Result generation ----------
@@ -293,15 +355,25 @@ function generateAmpm() {
   return Math.random() < 0.5 ? "AM" : "PM";
 }
 
-function generateCard() {
+function getAvailableCardsForTable() {
   if (getSetting("cardMode") === "shuffle") {
     ensureDeck();
-    const card = state.deck.pop();
+    return [...state.deck].sort((a, b) => a.number - b.number);
+  }
+  return ROUTINE_CARDS;
+}
+
+function chooseCard(cardNumber) {
+  const number = Number(cardNumber);
+  if (getSetting("cardMode") === "shuffle") {
+    ensureDeck();
+    const deckIndex = state.deck.findIndex((card) => card.number === number);
+    if (deckIndex === -1) return null;
+    const [card] = state.deck.splice(deckIndex, 1);
     state.usedCards.unshift(card);
     return card;
   }
-
-  return ROUTINE_CARDS[randomInt(0, ROUTINE_CARDS.length - 1)];
+  return ROUTINE_CARDS.find((card) => card.number === number) || null;
 }
 
 // ---------- Screen update functions ----------
@@ -309,6 +381,8 @@ function updateTimeDisplay(roll) {
   state.hour = roll.hour;
   state.minute = roll.minute;
   state.time = `${roll.hour}:${roll.minute}`;
+  state.hasTimeResult = true;
+  state.currentResultSaved = false;
   elements.timeResult.textContent = state.time;
   elements.timeModeNote.textContent = roll.note;
   elements.firstDie.textContent = roll.dieOne;
@@ -321,24 +395,46 @@ function updateTimeDisplay(roll) {
     elements.secondDie.textContent = roll.dieTwo;
     elements.diceDisplay.setAttribute("aria-label", `Two dice roll: ${roll.dieOne} and ${roll.dieTwo}`);
   }
+
+  setCompletionStatus(elements.timeStatus, true, "Not rolled");
+  updateScoreDisplay();
+}
+
+function updateActionDiceDisplay(roll) {
+  elements.actionDieOne.textContent = roll.dieOne;
+  if (roll.dieTwo === null) {
+    elements.actionDieTwo.classList.add("is-hidden");
+  } else {
+    elements.actionDieTwo.classList.remove("is-hidden");
+    elements.actionDieTwo.textContent = roll.dieTwo;
+  }
+  elements.diceScreenResult.textContent = `${roll.hour}:${roll.minute} — ${roll.note}`;
 }
 
 function updateAmpmDisplay(ampm) {
   state.ampm = ampm;
+  state.hasAmpmResult = true;
+  state.currentResultSaved = false;
   elements.ampmResult.textContent = ampm;
   elements.coin.textContent = ampm;
   elements.coinText.textContent = `${ampm} selected`;
+  setCompletionStatus(elements.ampmStatus, true, "Not flipped");
+  updateScoreDisplay();
 }
 
 function updateCardDisplay(card) {
   state.card = card;
+  state.hasCardResult = true;
+  state.currentResultSaved = false;
   state.thisTurnPoints = card.points;
   elements.cardNumber.textContent = `Card ${card.number}`;
   elements.routinePhrase.textContent = card.phrase;
   elements.cardPoints.textContent = formatPoints(card.points);
   elements.thisTurnPoints.textContent = formatPoints(card.points);
+  setCompletionStatus(elements.cardStatus, true, "Not chosen");
   updateSentenceHints(card.phrase);
   updateDeckCount();
+  updateScoreDisplay();
 }
 
 function updateSentenceHints(phrase) {
@@ -360,7 +456,7 @@ function updateDeckCount() {
   if (getSetting("cardMode") === "shuffle") {
     elements.deckCount.textContent = `Shuffle deck: ${state.deck.length} of ${ROUTINE_CARDS.length} cards left. ${state.usedCards.length} used.`;
   } else {
-    elements.deckCount.textContent = `Random draw with replacement from ${ROUTINE_CARDS.length} cards`;
+    elements.deckCount.textContent = `Replacement mode: all ${ROUTINE_CARDS.length} cards are available every draw.`;
   }
 }
 
@@ -370,8 +466,8 @@ function updateScoreDisplay() {
   const limit = getRoundLimit();
   elements.turnNumber.textContent = limit === null ? `Turn ${state.turn}` : `Turn ${state.turn} / ${limit}`;
   elements.finishedTotal.textContent = `Total: ${formatPoints(state.totalPoints)}`;
-  updateFinishedState();
-  updateAddPointsButton();
+  elements.finishedPanel.hidden = !isRoundFinished();
+  updateActionAvailability();
 }
 
 function updateHintsVisibility() {
@@ -396,11 +492,43 @@ function loadSavedAppearance() {
   applyAppearance();
 }
 
-function updateFinishedState() {
-  elements.finishedPanel.hidden = !isRoundFinished();
-  setButtonsDisabled(state.isAnimating);
+function resetCurrentResultDisplay() {
+  state.time = "--:--";
+  state.hour = null;
+  state.minute = "00";
+  state.ampm = "AM/PM";
+  state.card = null;
+  state.thisTurnPoints = 0;
+  state.currentResultSaved = true;
+  state.hasTimeResult = false;
+  state.hasAmpmResult = false;
+  state.hasCardResult = false;
+
+  elements.timeResult.textContent = "--:--";
+  elements.ampmResult.textContent = "AM/PM";
+  elements.timeModeNote.textContent = "Click to roll time.";
+  elements.firstDie.textContent = "?";
+  elements.secondDie.textContent = "?";
+  elements.secondDie.classList.add("is-hidden");
+  elements.coin.textContent = "?";
+  elements.coinText.textContent = "Not flipped";
+  elements.cardNumber.textContent = "Card --";
+  elements.routinePhrase.textContent = "Not chosen";
+  elements.cardPoints.textContent = "-- points";
+  setCompletionStatus(elements.timeStatus, false, "Not rolled");
+  setCompletionStatus(elements.ampmStatus, false, "Not flipped");
+  setCompletionStatus(elements.cardStatus, false, "Not chosen");
+  elements.diceScreenResult.textContent = "Not rolled yet.";
+  elements.coinScreenResult.textContent = "Not flipped yet.";
+  elements.cardScreenResult.textContent = "No card chosen yet.";
+  elements.actionDieOne.textContent = "?";
+  elements.actionDieTwo.textContent = "?";
+  elements.actionDieTwo.classList.add("is-hidden");
+  elements.actionCoin.textContent = "?";
+  updateSentenceHints("_____");
 }
 
+// ---------- History, deck list, and schedule ----------
 function renderHistory() {
   elements.historyList.innerHTML = "";
   elements.historyCount.textContent = `${state.history.length} ${state.history.length === 1 ? "turn" : "turns"}`;
@@ -419,9 +547,7 @@ function renderHistory() {
 
   state.history.forEach((turn, index) => {
     const item = document.createElement("li");
-    if (index === 0) {
-      item.classList.add("new-history");
-    }
+    if (index === 0) item.classList.add("new-history");
     item.textContent = `Turn ${turn.turn}: ${turn.time} ${turn.ampm}, ${turn.phrase}, ${formatPoints(turn.points)}`;
     elements.historyList.append(item);
   });
@@ -438,43 +564,12 @@ function addHistoryEntry() {
   renderHistory();
 }
 
-function addCurrentPoints() {
-  if (!hasFullCurrentResult() || state.currentResultSaved || isRoundFinished()) {
-    return;
-  }
-
-  state.turn += 1;
-  state.totalPoints += state.card.points;
-  state.thisTurnPoints = state.card.points;
-  updateScoreDisplay();
-  animateScore(state.card.points);
-  addHistoryEntry();
-  markCurrentResultSaved();
-  updateFinishedState();
-}
-
-function animateScore(points) {
-  elements.scorePop.textContent = `+${points}`;
-  elements.scorePop.classList.remove("show");
-  void elements.scorePop.offsetWidth;
-  elements.scorePop.classList.add("show");
-}
-
-function setHistoryExpanded(isExpanded) {
-  state.historyExpanded = isExpanded;
-  elements.historyPanel.classList.toggle("is-collapsed", !isExpanded);
-  elements.historyPanel.classList.toggle("is-expanded", isExpanded);
-  elements.historyBody.hidden = !isExpanded;
-  elements.historyToggle.setAttribute("aria-expanded", String(isExpanded));
-  elements.historyToggleText.textContent = isExpanded ? "Collapse" : "Expand";
-}
-
 function buildCardList(cards) {
   const list = document.createElement("ul");
   list.className = "card-mini-list";
   cards.forEach((card) => {
     const item = document.createElement("li");
-    item.textContent = `${card.phrase} - ${formatPoints(card.points)}`;
+    item.textContent = `Card ${card.number}: ${card.phrase} — ${formatPoints(card.points)}`;
     list.append(item);
   });
   return list;
@@ -488,11 +583,16 @@ function openDeckViewer() {
     remainingTitle.textContent = `Remaining cards (${state.deck.length})`;
     const usedTitle = document.createElement("h3");
     usedTitle.textContent = `Used cards (${state.usedCards.length})`;
-    elements.deckViewerContent.append(remainingTitle, buildCardList([...state.deck].sort((a, b) => a.number - b.number)), usedTitle, buildCardList(state.usedCards));
+    elements.deckViewerContent.append(
+      remainingTitle,
+      buildCardList([...state.deck].sort((a, b) => a.number - b.number)),
+      usedTitle,
+      buildCardList(state.usedCards)
+    );
   } else {
     const note = document.createElement("p");
     note.className = "modal-note";
-    note.textContent = "All cards are available every draw.";
+    note.textContent = "All 24 cards are available every draw in replacement mode.";
     elements.deckViewerContent.append(note, buildCardList(ROUTINE_CARDS));
   }
 
@@ -540,141 +640,169 @@ function openModal(modal, focusTarget) {
 
 function closeModal(modal, returnFocusTarget) {
   modal.hidden = true;
-  if (returnFocusTarget) {
-    returnFocusTarget.focus();
-  }
+  if (returnFocusTarget) returnFocusTarget.focus();
 }
 
-// ---------- Animated actions ----------
-async function rollTime() {
-  const duration = animationTime(TIME_ROLL_DURATION);
+function setHistoryExpanded(isExpanded) {
+  state.historyExpanded = isExpanded;
+  elements.historyPanel.classList.toggle("is-collapsed", !isExpanded);
+  elements.historyPanel.classList.toggle("is-expanded", isExpanded);
+  elements.historyBody.hidden = !isExpanded;
+  elements.historyToggle.setAttribute("aria-expanded", String(isExpanded));
+  elements.historyToggleText.textContent = isExpanded ? "Collapse" : "Expand";
+}
+
+// ---------- Animated action screens ----------
+async function rollTimeOnDiceScreen() {
+  if (state.isAnimating || isRoundFinished()) return;
+  state.isAnimating = true;
+  updateActionAvailability();
   setActiveStep(elements.timePanel, true);
-  elements.timeResult.classList.add("rolling");
+  const duration = animationTime(TIME_ROLL_DURATION);
+  elements.actionDiceDisplay.classList.add("big-rolling");
   elements.diceDisplay.classList.add("rolling");
 
   if (duration > 0) {
-    const interval = setInterval(() => {
-      const preview = generateTimeRoll();
-      updateTimeDisplay(preview);
-    }, 90);
+    const interval = setInterval(() => updateActionDiceDisplay(generateTimeRoll()), 85);
     await wait(duration);
     clearInterval(interval);
   }
 
   const finalRoll = generateTimeRoll();
+  updateActionDiceDisplay(finalRoll);
   updateTimeDisplay(finalRoll);
-  elements.timeResult.classList.remove("rolling");
+  elements.actionDiceDisplay.classList.remove("big-rolling");
   elements.diceDisplay.classList.remove("rolling");
   setActiveStep(elements.timePanel, false);
+  state.isAnimating = false;
+  updateActionAvailability();
 }
 
-async function flipAmpm() {
-  const duration = animationTime(COIN_FLIP_DURATION);
+async function flipCoinOnCoinScreen() {
+  if (state.isAnimating || isRoundFinished()) return;
+  state.isAnimating = true;
+  updateActionAvailability();
   setActiveStep(elements.coinPanel, true);
+  const duration = animationTime(COIN_FLIP_DURATION);
+  elements.actionCoin.classList.add("big-flipping");
   elements.coin.classList.add("flipping");
 
   if (duration > 0) {
     const interval = setInterval(() => {
-      elements.coin.textContent = generateAmpm();
-    }, 100);
+      elements.actionCoin.textContent = generateAmpm();
+    }, 90);
     await wait(duration);
     clearInterval(interval);
   }
 
-  updateAmpmDisplay(generateAmpm());
+  const result = generateAmpm();
+  elements.actionCoin.textContent = result;
+  elements.coinScreenResult.textContent = `${result} selected`;
+  updateAmpmDisplay(result);
+  elements.actionCoin.classList.remove("big-flipping");
   elements.coin.classList.remove("flipping");
   setActiveStep(elements.coinPanel, false);
+  state.isAnimating = false;
+  updateActionAvailability();
 }
 
-async function drawRoutineCard() {
-  const duration = animationTime(CARD_SHUFFLE_DURATION);
-  setActiveStep(elements.cardPanel, true);
-  elements.deck.classList.add("shuffling");
-  elements.routineCard.classList.remove("revealing");
+function renderCardTable() {
+  const availableCards = getAvailableCardsForTable();
+  elements.cardTable.innerHTML = "";
+  elements.cardTableNote.textContent = getSetting("cardMode") === "shuffle"
+    ? `Shuffle mode: choose from ${availableCards.length} remaining cards. Used cards return after the deck runs out.`
+    : "Replacement mode: all 24 cards are available every draw.";
 
-  if (duration > 0) {
-    await wait(duration);
-  }
-
-  updateCardDisplay(generateCard());
-  elements.deck.classList.remove("shuffling");
-  elements.routineCard.classList.add("revealing");
-
-  if (shouldAnimate()) {
-    await wait(QUICK_ANIMATION_DURATION);
-  }
-  elements.routineCard.classList.remove("revealing");
-  setActiveStep(elements.cardPanel, false);
+  availableCards.forEach((card) => {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "table-card";
+    button.dataset.cardNumber = card.number;
+    button.innerHTML = `
+      <span class="table-card-inner">
+        <span class="table-card-back">?</span>
+        <span class="table-card-front">
+          <span>Card ${card.number}</span>
+          <strong>${card.phrase}</strong>
+          <span>${formatPoints(card.points)}</span>
+        </span>
+      </span>
+    `;
+    button.addEventListener("click", () => selectTableCard(button));
+    elements.cardTable.append(button);
+  });
 }
 
-// ---------- Turn control ----------
-async function runSafely(action, options = {}) {
-  const { resultChanges = false } = options;
-  if (state.isAnimating || isRoundFinished()) {
-    updateFinishedState();
-    return;
-  }
+async function selectTableCard(button) {
+  if (state.isAnimating || button.classList.contains("is-revealed") || isRoundFinished()) return;
+  const card = chooseCard(button.dataset.cardNumber);
+  if (!card) return;
 
   state.isAnimating = true;
-  setSettingsOpen(false);
-  setButtonsDisabled(true);
+  updateActionAvailability();
+  setActiveStep(elements.cardPanel, true);
+  elements.cardTable.querySelectorAll(".table-card").forEach((cardButton) => {
+    cardButton.disabled = true;
+    if (cardButton !== button) cardButton.classList.add("is-dimmed");
+  });
+  button.classList.add("is-revealed");
+  elements.deck.classList.add("shuffling");
 
-  try {
-    await action();
-    if (resultChanges) {
-      markCurrentResultChanged();
-    }
-  } finally {
-    state.isAnimating = false;
-    setButtonsDisabled(false);
-    updateFinishedState();
+  if (animationTime(CARD_FLIP_DURATION) > 0) {
+    await wait(CARD_FLIP_DURATION);
   }
+
+  updateCardDisplay(card);
+  elements.cardScreenResult.textContent = `Card ${card.number}: ${card.phrase} — ${formatPoints(card.points)}`;
+  elements.deck.classList.remove("shuffling");
+  setActiveStep(elements.cardPanel, false);
+  state.isAnimating = false;
+  updateActionAvailability();
 }
 
+// ---------- Turn and scoring control ----------
 function newTurn() {
-  if (hasUnsavedCurrentResult()) {
-    updateFinishedState();
+  if (state.isAnimating || isRoundFinished()) {
+    updateScoreDisplay();
     return;
   }
-
-  runSafely(async () => {
-    await rollTime();
-    await wait(BETWEEN_ANIMATION_PAUSE);
-    await flipAmpm();
-    await wait(BETWEEN_ANIMATION_PAUSE);
-    await drawRoutineCard();
-    await wait(BETWEEN_ANIMATION_PAUSE);
-  }, { resultChanges: true });
+  resetCurrentResultDisplay();
+  updateScoreDisplay();
+  showMainScreen();
 }
 
-function resetCurrentResultDisplay() {
-  elements.timeResult.textContent = "--:--";
-  elements.ampmResult.textContent = "AM/PM";
-  elements.timeModeNote.textContent = "Fair 1–12 time roll";
-  elements.firstDie.textContent = "?";
-  elements.secondDie.textContent = "?";
-  elements.secondDie.classList.add("is-hidden");
-  elements.coin.textContent = "?";
-  elements.coinText.textContent = "Ready to flip";
-  elements.cardNumber.textContent = "Card --";
-  elements.routinePhrase.textContent = "Tap New Turn";
-  elements.cardPoints.textContent = "-- points";
-  updateSentenceHints("_____");
+function addCurrentPoints() {
+  if (!hasFullCurrentResult() || state.currentResultSaved || isRoundFinished()) return;
+
+  state.turn += 1;
+  state.totalPoints += state.card.points;
+  state.thisTurnPoints = state.card.points;
+  state.currentResultSaved = true;
+  updateScoreDisplay();
+  animateScore(state.card.points);
+  addHistoryEntry();
+}
+
+function animateScore(points) {
+  elements.scorePop.textContent = `+${points}`;
+  elements.scorePop.classList.remove("show");
+  void elements.scorePop.offsetWidth;
+  elements.scorePop.classList.add("show");
 }
 
 function resetGame() {
   const confirmed = window.confirm("Reset the total points and completed turn history for this device?");
-  if (!confirmed) {
-    return;
-  }
+  if (!confirmed) return;
 
+  const historyExpanded = state.historyExpanded;
   state = getFreshState();
+  state.historyExpanded = historyExpanded;
   resetDeckState();
   resetCurrentResultDisplay();
   updateScoreDisplay();
   renderHistory();
   setHistoryExpanded(false);
-  updateFinishedState();
+  showMainScreen();
 }
 
 // ---------- Event listeners ----------
@@ -691,14 +819,17 @@ document.addEventListener("click", (event) => {
 document.addEventListener("keydown", (event) => {
   if (event.key === "Escape") {
     setSettingsOpen(false);
-    if (!elements.deckModal.hidden) {
-      closeModal(elements.deckModal, elements.deckButton);
-    }
-    if (!elements.scheduleModal.hidden) {
-      closeModal(elements.scheduleModal, elements.scheduleButton);
-    }
+    if (!elements.deckModal.hidden) closeModal(elements.deckModal, elements.viewDeckListButton);
+    if (!elements.scheduleModal.hidden) closeModal(elements.scheduleModal, elements.scheduleButton);
   }
 });
+
+function handlePanelKeyboard(event, handler) {
+  if (event.key === "Enter" || event.key === " ") {
+    event.preventDefault();
+    handler();
+  }
+}
 
 hintData.forEach((hint) => {
   hint.element.addEventListener("click", () => {
@@ -707,43 +838,48 @@ hintData.forEach((hint) => {
   });
 });
 
+elements.timePanel.addEventListener("click", showDiceScreen);
+elements.timePanel.addEventListener("keydown", (event) => handlePanelKeyboard(event, showDiceScreen));
+elements.coinPanel.addEventListener("click", showCoinScreen);
+elements.coinPanel.addEventListener("keydown", (event) => handlePanelKeyboard(event, showCoinScreen));
+elements.cardPanel.addEventListener("click", showCardScreen);
+elements.cardPanel.addEventListener("keydown", (event) => handlePanelKeyboard(event, showCardScreen));
+elements.viewDeckListButton.addEventListener("click", (event) => {
+  event.stopPropagation();
+  openDeckViewer();
+});
+
 elements.newTurnButton.addEventListener("click", newTurn);
-elements.rollTimeButton.addEventListener("click", () => runSafely(rollTime, { resultChanges: true }));
-elements.flipAmpmButton.addEventListener("click", () => runSafely(flipAmpm, { resultChanges: true }));
-elements.drawCardButton.addEventListener("click", () => runSafely(drawRoutineCard, { resultChanges: true }));
+elements.rollTimeButton.addEventListener("click", showDiceScreen);
+elements.flipAmpmButton.addEventListener("click", showCoinScreen);
+elements.drawCardButton.addEventListener("click", showCardScreen);
 elements.addPointsButton.addEventListener("click", addCurrentPoints);
 elements.resetButton.addEventListener("click", resetGame);
 elements.historyToggle.addEventListener("click", () => setHistoryExpanded(!state.historyExpanded));
-elements.deckButton.addEventListener("click", openDeckViewer);
 elements.scheduleButton.addEventListener("click", openScheduleViewer);
-elements.closeDeckModal.addEventListener("click", () => closeModal(elements.deckModal, elements.deckButton));
+elements.closeDeckModal.addEventListener("click", () => closeModal(elements.deckModal, elements.viewDeckListButton));
 elements.closeScheduleModal.addEventListener("click", () => closeModal(elements.scheduleModal, elements.scheduleButton));
+elements.actionRollDiceButton.addEventListener("click", rollTimeOnDiceScreen);
+elements.actionFlipCoinButton.addEventListener("click", flipCoinOnCoinScreen);
+[elements.backFromDice, elements.returnAfterDice, elements.backFromCoin, elements.returnAfterCoin, elements.backFromCard, elements.returnAfterCard].forEach((button) => {
+  button.addEventListener("click", showMainScreen);
+});
 
 elements.deckModal.addEventListener("click", (event) => {
-  if (event.target === elements.deckModal) {
-    closeModal(elements.deckModal, elements.deckButton);
-  }
+  if (event.target === elements.deckModal) closeModal(elements.deckModal, elements.viewDeckListButton);
 });
 
 elements.scheduleModal.addEventListener("click", (event) => {
-  if (event.target === elements.scheduleModal) {
-    closeModal(elements.scheduleModal, elements.scheduleButton);
-  }
+  if (event.target === elements.scheduleModal) closeModal(elements.scheduleModal, elements.scheduleButton);
 });
 
 elements.settingsForm.addEventListener("change", (event) => {
   if (event.target.name === "cardMode") {
     resetDeckState();
+    if (!elements.cardScreen.hidden) renderCardTable();
   }
-  if (event.target.name === "appearance") {
-    applyAppearance();
-  }
-  if (event.target.name === "displayMode") {
-    applyDisplayMode();
-  }
-  if (event.target.name === "roundLimit") {
-    updateFinishedState();
-  }
+  if (event.target.name === "appearance") applyAppearance();
+  if (event.target.name === "displayMode") applyDisplayMode();
   updateHintsVisibility();
   updateDeckCount();
   updateScoreDisplay();
@@ -753,10 +889,9 @@ elements.settingsForm.addEventListener("change", (event) => {
 loadSavedAppearance();
 applyDisplayMode();
 resetDeckState();
-updateSentenceHints("_____");
+resetCurrentResultDisplay();
 updateScoreDisplay();
 updateHintsVisibility();
-updateDeckCount();
 renderHistory();
 setHistoryExpanded(false);
-updateFinishedState();
+showView(elements.mainScreen);
