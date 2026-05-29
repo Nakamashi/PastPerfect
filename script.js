@@ -1,5 +1,5 @@
 /*
-  Daily Routine Sentence Game
+  Daily Routine Game
   Static JavaScript only: no backend, build tools, or external libraries.
 */
 
@@ -21,11 +21,12 @@ const ROUTINE_CARDS = [
 ];
 
 // ---------- Animation timing constants ----------
-// Keep these values easy to edit. The full New Turn sequence is about 2 seconds.
-const TIME_ROLL_DURATION = 650;
-const COIN_FLIP_DURATION = 500;
-const CARD_SHUFFLE_DURATION = 650;
-const QUICK_ANIMATION_DURATION = 250;
+// Keep these values easy to edit. The full New Turn sequence is slower and clearer for class play.
+const TIME_ROLL_DURATION = 1100;
+const COIN_FLIP_DURATION = 900;
+const CARD_SHUFFLE_DURATION = 1100;
+const QUICK_ANIMATION_DURATION = 450;
+const BETWEEN_ANIMATION_PAUSE = 350;
 
 const MINUTES = ["00", "05", "10", "15", "20", "25", "30", "35", "40", "45", "50", "55"];
 const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -33,6 +34,9 @@ const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)
 // ---------- Page elements ----------
 const elements = {
   turnNumber: document.querySelector("#turnNumber"),
+  timePanel: document.querySelector("#timePanel"),
+  coinPanel: document.querySelector("#coinPanel"),
+  cardPanel: document.querySelector("#cardPanel"),
   timeResult: document.querySelector("#timeResult"),
   ampmResult: document.querySelector("#ampmResult"),
   timeModeNote: document.querySelector("#timeModeNote"),
@@ -56,6 +60,9 @@ const elements = {
   scorePop: document.querySelector("#scorePop"),
   historyCount: document.querySelector("#historyCount"),
   historyList: document.querySelector("#historyList"),
+  settingsMenu: document.querySelector("#settingsMenu"),
+  settingsButton: document.querySelector("#settingsButton"),
+  settingsDropdown: document.querySelector("#settingsDropdown"),
   settingsForm: document.querySelector("#settingsForm"),
   buttons: document.querySelectorAll("button"),
   newTurnButton: document.querySelector("#newTurnButton"),
@@ -106,6 +113,15 @@ function setButtonsDisabled(disabled) {
   elements.buttons.forEach((button) => {
     button.disabled = disabled;
   });
+}
+
+function setActiveStep(panel, isActive) {
+  panel.classList.toggle("active-step", isActive && shouldAnimate());
+}
+
+function setSettingsOpen(isOpen) {
+  elements.settingsDropdown.hidden = !isOpen;
+  elements.settingsButton.setAttribute("aria-expanded", String(isOpen));
 }
 
 function formatPoints(points) {
@@ -274,6 +290,7 @@ function animateScore(points) {
 // ---------- Animated actions ----------
 async function rollTime() {
   const duration = animationTime(TIME_ROLL_DURATION);
+  setActiveStep(elements.timePanel, true);
   elements.timeResult.classList.add("rolling");
   elements.diceDisplay.classList.add("rolling");
 
@@ -290,10 +307,12 @@ async function rollTime() {
   updateTimeDisplay(finalRoll);
   elements.timeResult.classList.remove("rolling");
   elements.diceDisplay.classList.remove("rolling");
+  setActiveStep(elements.timePanel, false);
 }
 
 async function flipAmpm() {
   const duration = animationTime(COIN_FLIP_DURATION);
+  setActiveStep(elements.coinPanel, true);
   elements.coin.classList.add("flipping");
 
   if (duration > 0) {
@@ -306,10 +325,12 @@ async function flipAmpm() {
 
   updateAmpmDisplay(generateAmpm());
   elements.coin.classList.remove("flipping");
+  setActiveStep(elements.coinPanel, false);
 }
 
 async function drawRoutineCard() {
   const duration = animationTime(CARD_SHUFFLE_DURATION);
+  setActiveStep(elements.cardPanel, true);
   elements.deck.classList.add("shuffling");
   elements.routineCard.classList.remove("revealing");
 
@@ -325,6 +346,7 @@ async function drawRoutineCard() {
     await wait(QUICK_ANIMATION_DURATION);
   }
   elements.routineCard.classList.remove("revealing");
+  setActiveStep(elements.cardPanel, false);
 }
 
 // ---------- Turn control ----------
@@ -334,6 +356,7 @@ async function runSafely(action, addPointsAfter = false) {
   }
 
   state.isAnimating = true;
+  setSettingsOpen(false);
   setButtonsDisabled(true);
 
   try {
@@ -355,8 +378,11 @@ async function runSafely(action, addPointsAfter = false) {
 function newTurn() {
   runSafely(async () => {
     await rollTime();
+    await wait(BETWEEN_ANIMATION_PAUSE);
     await flipAmpm();
+    await wait(BETWEEN_ANIMATION_PAUSE);
     await drawRoutineCard();
+    await wait(BETWEEN_ANIMATION_PAUSE);
   }, true);
 }
 
@@ -398,6 +424,22 @@ function resetGame() {
 }
 
 // ---------- Event listeners ----------
+elements.settingsButton.addEventListener("click", () => {
+  setSettingsOpen(elements.settingsDropdown.hidden);
+});
+
+document.addEventListener("click", (event) => {
+  if (!elements.settingsMenu.contains(event.target)) {
+    setSettingsOpen(false);
+  }
+});
+
+document.addEventListener("keydown", (event) => {
+  if (event.key === "Escape") {
+    setSettingsOpen(false);
+  }
+});
+
 elements.newTurnButton.addEventListener("click", newTurn);
 elements.rollTimeButton.addEventListener("click", () => runSafely(rollTime));
 elements.flipAmpmButton.addEventListener("click", () => runSafely(flipAmpm));

@@ -3,22 +3,60 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Daily Routine Sentence Game</title>
+  <title>Daily Routine Game</title>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <header class="site-header">
-    <p class="eyebrow">Present Perfect Practice</p>
-    <h1>Daily Routine Sentence Game</h1>
-    <p class="intro">Tap <strong>New Turn</strong>, say your sentence, then write it on your worksheet.</p>
+  <header class="top-bar">
+    <div class="top-left">
+      <strong class="app-title">Daily Routine Game</strong>
+      <span id="turnNumber" class="turn-pill">Turn 0</span>
+    </div>
+
+    <div class="top-actions">
+      <div id="settingsMenu" class="settings-menu">
+        <button id="settingsButton" class="settings-button" type="button" aria-expanded="false" aria-controls="settingsDropdown">⚙ Settings</button>
+        <div id="settingsDropdown" class="settings-dropdown" hidden>
+          <form id="settingsForm" class="settings-form">
+            <fieldset>
+              <legend>Time mode</legend>
+              <label><input type="radio" name="timeMode" value="fair" checked> Fair 1–12 mode</label>
+              <label><input type="radio" name="timeMode" value="dice"> Two dice mode (2–12)</label>
+            </fieldset>
+
+            <fieldset>
+              <legend>Minute mode</legend>
+              <label><input type="radio" name="minuteMode" value="zero" checked> Always :00</label>
+              <label><input type="radio" name="minuteMode" value="random"> Random 5-minute mark</label>
+            </fieldset>
+
+            <fieldset>
+              <legend>Card draw mode</legend>
+              <label><input type="radio" name="cardMode" value="replacement" checked> Random with replacement</label>
+              <label><input type="radio" name="cardMode" value="shuffle"> Shuffle deck</label>
+            </fieldset>
+
+            <fieldset>
+              <legend>Sentence hints</legend>
+              <label><input type="radio" name="hints" value="on" checked> On</label>
+              <label><input type="radio" name="hints" value="off"> Off</label>
+            </fieldset>
+
+            <fieldset>
+              <legend>Animations</legend>
+              <label><input type="radio" name="animations" value="on" checked> On</label>
+              <label><input type="radio" name="animations" value="off"> Off</label>
+            </fieldset>
+          </form>
+        </div>
+      </div>
+      <button id="resetButton" class="reset-button" type="button">Reset Game</button>
+    </div>
   </header>
 
   <main class="app-shell">
     <section class="game-card" aria-labelledby="result-title">
-      <div class="round-row">
-        <h2 id="result-title">Current Turn</h2>
-        <span id="turnNumber" class="turn-pill">Turn 0</span>
-      </div>
+      <h1 id="result-title" class="visually-hidden">Current Turn</h1>
 
       <div class="result-grid" aria-live="polite">
         <article id="timePanel" class="result-panel time-panel">
@@ -54,27 +92,29 @@
         </article>
       </div>
 
-      <section id="sentenceHints" class="sentence-hints" aria-labelledby="hints-title">
-        <h3 id="hints-title">Sentence Hints</h3>
-        <ul>
-          <li id="hintYet">I haven’t _____ yet.</li>
-          <li id="hintAlready">I have already _____.</li>
-          <li id="hintJust">I have just _____.</li>
-        </ul>
-        <p>Choose the sentence that matches your time and your real daily routine.</p>
-      </section>
+      <div class="practice-row">
+        <section id="sentenceHints" class="sentence-hints" aria-labelledby="hints-title">
+          <h2 id="hints-title">Sentence Hints</h2>
+          <ul>
+            <li id="hintYet">I haven’t _____ yet.</li>
+            <li id="hintAlready">I have already _____.</li>
+            <li id="hintJust">I have just _____.</li>
+          </ul>
+          <p>Choose the sentence that matches your time and your real daily routine.</p>
+        </section>
 
-      <section class="score-board" aria-live="polite">
-        <div>
-          <span class="label">This turn</span>
-          <strong id="thisTurnPoints">0 points</strong>
-        </div>
-        <div class="total-wrap">
-          <span class="label">Total</span>
-          <strong id="totalPoints">0 points</strong>
-          <span id="scorePop" class="score-pop" aria-hidden="true"></span>
-        </div>
-      </section>
+        <section class="score-board" aria-live="polite">
+          <div>
+            <span class="label">This turn</span>
+            <strong id="thisTurnPoints">0 points</strong>
+          </div>
+          <div class="total-wrap">
+            <span class="label">Total</span>
+            <strong id="totalPoints">0 points</strong>
+            <span id="scorePop" class="score-pop" aria-hidden="true"></span>
+          </div>
+        </section>
+      </div>
 
       <section class="button-area" aria-label="Game controls">
         <button id="newTurnButton" class="primary-button" type="button">New Turn</button>
@@ -83,59 +123,17 @@
           <button id="flipAmpmButton" type="button">Flip AM / PM</button>
           <button id="drawCardButton" type="button">Draw Routine Card</button>
         </div>
-        <button id="resetButton" class="reset-button" type="button">Reset Game</button>
       </section>
     </section>
 
-    <aside class="side-panel">
-      <details class="settings-panel">
-        <summary>Teacher Settings</summary>
-        <form id="settingsForm" class="settings-form">
-          <fieldset>
-            <legend>Time mode</legend>
-            <label><input type="radio" name="timeMode" value="fair" checked> Fair 1–12 mode</label>
-            <label><input type="radio" name="timeMode" value="dice"> Two dice mode (2–12)</label>
-          </fieldset>
-
-          <fieldset>
-            <legend>Minute mode</legend>
-            <label><input type="radio" name="minuteMode" value="zero" checked> Always :00</label>
-            <label><input type="radio" name="minuteMode" value="random"> Random 5-minute mark</label>
-          </fieldset>
-
-          <fieldset>
-            <legend>Card draw mode</legend>
-            <label><input type="radio" name="cardMode" value="replacement" checked> Random with replacement</label>
-            <label><input type="radio" name="cardMode" value="shuffle"> Shuffle deck</label>
-          </fieldset>
-
-          <fieldset>
-            <legend>Sentence hints</legend>
-            <label><input type="radio" name="hints" value="on" checked> On</label>
-            <label><input type="radio" name="hints" value="off"> Off</label>
-          </fieldset>
-
-          <fieldset>
-            <legend>Animations</legend>
-            <label><input type="radio" name="animations" value="on" checked> On</label>
-            <label><input type="radio" name="animations" value="off"> Off</label>
-          </fieldset>
-        </form>
-      </details>
-
-      <section class="history-panel" aria-labelledby="history-title">
-        <div class="history-heading">
-          <h2 id="history-title">History</h2>
-          <span id="historyCount">0 turns</span>
-        </div>
-        <ol id="historyList" class="history-list"></ol>
-      </section>
+    <aside class="history-panel" aria-labelledby="history-title">
+      <div class="history-heading">
+        <h2 id="history-title">History</h2>
+        <span id="historyCount">0 turns</span>
+      </div>
+      <ol id="historyList" class="history-list"></ol>
     </aside>
   </main>
-
-  <footer class="site-footer">
-    <p>No login. No internet needed after loading. Students still write their sentences on paper.</p>
-  </footer>
 
   <script src="script.js"></script>
 </body>
