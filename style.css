@@ -1653,3 +1653,21 @@ body.dark-mode .table-card-empty {
   border-color: rgba(203, 213, 225, 0.35);
   background: rgba(2, 6, 23, 0.3);
 }
+
+/* Make the action coin visibly coast to a stop instead of switching from fast spin to still. */
+.big-flipping,
+.big-flipping.is-decelerating {
+  animation: big-coin-flip-slowdown 2.2s linear 1 both;
+}
+
+@keyframes big-coin-flip-slowdown {
+  0% { transform: rotateY(0deg) rotateZ(0deg) scale(1); }
+  18% { transform: rotateY(900deg) rotateZ(14deg) scale(1.12); }
+  34% { transform: rotateY(1530deg) rotateZ(-12deg) scale(1.09); }
+  50% { transform: rotateY(1980deg) rotateZ(9deg) scale(1.06); }
+  66% { transform: rotateY(2250deg) rotateZ(-6deg) scale(1.035); }
+  80% { transform: rotateY(2410deg) rotateZ(4deg) scale(1.015); }
+  91% { transform: rotateY(2480deg) rotateZ(-2deg) scale(1.005); }
+  97% { transform: rotateY(2510deg) rotateZ(1deg) scale(1); }
+  100% { transform: rotateY(2520deg) rotateZ(0deg) scale(1); }
+}
