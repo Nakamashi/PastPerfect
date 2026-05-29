@@ -11,6 +11,22 @@
   --orange: #f97316;
   --red: #c2410c;
   --border: #d7e1ef;
+  --panel: #f8fbff;
+  --top-pill: #e0f2fe;
+  --top-pill-ink: #174b85;
+  --badge-bg: #fff7cc;
+  --badge-ink: #7c4a03;
+  --die-bg: #ffffff;
+  --routine-bg: #ffffff;
+  --deck-start: #dbeafe;
+  --hint-bg: #eefdf4;
+  --hint-border: #bbf7d0;
+  --hint-card-bg: #ffffff;
+  --hint-text: #27563b;
+  --score-bg: #fff7ed;
+  --score-border: #fed7aa;
+  --settings-bg: rgba(255, 255, 255, 0.98);
+  --history-item-bg: #f8fbff;
   --shadow: 0 14px 34px rgba(24, 49, 83, 0.14);
   --radius: 20px;
 }
@@ -26,6 +42,38 @@ body {
   color: var(--ink);
   background: radial-gradient(circle at top left, #dff3ff 0, transparent 32%), var(--bg);
   font-size: 17px;
+}
+
+body.dark-mode {
+  --bg: #0f172a;
+  --card: #172033;
+  --ink: #f8fafc;
+  --muted: #b7c5d9;
+  --blue: #3b82f6;
+  --blue-dark: #1d4ed8;
+  --green: #7dd3a7;
+  --yellow: #facc15;
+  --orange: #fb923c;
+  --red: #c2410c;
+  --border: #334155;
+  --panel: #1e293b;
+  --top-pill: #1e3a5f;
+  --top-pill-ink: #bfdbfe;
+  --badge-bg: #43320c;
+  --badge-ink: #fde68a;
+  --die-bg: #111827;
+  --routine-bg: #111827;
+  --deck-start: #1e40af;
+  --hint-bg: #102a27;
+  --hint-border: #1f6b50;
+  --hint-card-bg: #172033;
+  --hint-text: #bbf7d0;
+  --score-bg: #2a2118;
+  --score-border: #9a5b22;
+  --settings-bg: rgba(23, 32, 51, 0.99);
+  --history-item-bg: #1e293b;
+  --shadow: 0 18px 36px rgba(0, 0, 0, 0.35);
+  background: radial-gradient(circle at top left, rgba(59, 130, 246, 0.22) 0, transparent 34%), var(--bg);
 }
 
 button,
@@ -112,8 +160,8 @@ p {
   display: inline-flex;
   border-radius: 999px;
   padding: 0.35rem 0.75rem;
-  background: #e0f2fe;
-  color: var(--blue-dark);
+  background: var(--top-pill);
+  color: var(--top-pill-ink);
   font-weight: 800;
   white-space: nowrap;
 }
@@ -131,7 +179,7 @@ p {
 
 .game-card,
 .history-panel {
-  background: rgba(255, 255, 255, 0.94);
+  background: var(--card);
   border: 2px solid var(--border);
   border-radius: var(--radius);
   box-shadow: var(--shadow);
@@ -159,7 +207,7 @@ p {
   border: 2px solid var(--border);
   border-radius: 20px;
   padding: clamp(0.85rem, 1.2vw, 1.15rem);
-  background: #f8fbff;
+  background: var(--panel);
   text-align: center;
   overflow: hidden;
   transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
@@ -215,8 +263,8 @@ p {
   margin-top: 0.5rem;
   border-radius: 14px;
   padding: 0.35rem 0.65rem;
-  background: #fff7cc;
-  color: #7c4a03;
+  background: var(--badge-bg);
+  color: var(--badge-ink);
   font-size: clamp(1.15rem, 1.5vw, 1.5rem);
   font-weight: 900;
 }
@@ -241,7 +289,7 @@ p {
   height: 48px;
   border: 3px solid var(--ink);
   border-radius: 12px;
-  background: #ffffff;
+  background: var(--die-bg);
   font-size: 1.5rem;
   font-weight: 900;
 }
@@ -277,7 +325,7 @@ p {
   inset: 0;
   border: 3px solid var(--blue-dark);
   border-radius: 10px;
-  background: linear-gradient(135deg, #dbeafe, #ffffff);
+  background: linear-gradient(135deg, var(--deck-start), var(--routine-bg));
 }
 
 .deck span:nth-child(1) { transform: rotate(-8deg); }
@@ -291,7 +339,7 @@ p {
   border: 3px solid var(--blue);
   border-radius: 18px;
   padding: 0.75rem;
-  background: #ffffff;
+  background: var(--routine-bg);
 }
 
 .card-number,
@@ -321,8 +369,8 @@ p {
 
 .sentence-hints {
   padding: 0.85rem 1rem;
-  background: #eefdf4;
-  border: 2px solid #bbf7d0;
+  background: var(--hint-bg);
+  border: 2px solid var(--hint-border);
 }
 
 .sentence-hints.is-hidden {
@@ -347,14 +395,81 @@ p {
 }
 
 .sentence-hints li {
+  min-width: 0;
+}
+
+.hint-instruction {
+  margin: 0.35rem 0 0;
+}
+
+.hint-card {
+  display: grid;
+  justify-items: start;
+  gap: 0.28rem;
+  width: 100%;
+  min-height: 96px;
+  border: 2px solid transparent;
   border-radius: 12px;
   padding: 0.55rem;
-  background: #ffffff;
+  color: var(--ink);
+  background: var(--hint-card-bg);
+  box-shadow: none;
+  text-align: left;
+  transition: border-color 0.18s ease, box-shadow 0.18s ease, transform 0.18s ease, background-color 0.18s ease;
+}
+
+.hint-card:hover:not(:disabled),
+.hint-card:focus-visible:not(:disabled) {
+  border-color: var(--green);
+  box-shadow: 0 8px 18px rgba(47, 133, 90, 0.18);
+  transform: translateY(-2px);
+  filter: none;
+}
+
+.hint-card:active:not(:disabled) {
+  transform: translateY(0);
+  box-shadow: none;
+}
+
+.hint-label {
+  display: inline-flex;
+  border-radius: 999px;
+  padding: 0.14rem 0.5rem;
+  color: #ffffff;
+  background: var(--green);
+  font-size: 0.78rem;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.hint-sentence {
+  color: var(--hint-text);
+  line-height: 1.25;
+}
+
+.hint-phrase {
+  display: inline-block;
+  min-width: 7.5ch;
+  filter: blur(6px);
+  opacity: 0.55;
+  user-select: none;
+  transition: filter 0.18s ease, opacity 0.18s ease;
+}
+
+.hint-card.is-revealed {
+  border-color: var(--green);
+}
+
+.hint-card.is-revealed .hint-phrase {
+  filter: none;
+  opacity: 1;
+  user-select: text;
 }
 
 .sentence-hints p {
   margin: 0;
-  color: #27563b;
+  color: var(--hint-text);
   font-size: 0.95rem;
 }
 
@@ -370,8 +485,8 @@ p {
   align-content: center;
   min-height: 92px;
   padding: 0.75rem;
-  background: #fff7ed;
-  border: 2px solid #fed7aa;
+  background: var(--score-bg);
+  border: 2px solid var(--score-border);
   text-align: center;
 }
 
@@ -404,10 +519,28 @@ p {
   font-size: clamp(1.45rem, 2.1vw, 2rem);
 }
 
+.manual-controls {
+  display: grid;
+  gap: 0.45rem;
+}
+
 .small-buttons {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(4, 1fr);
   gap: 0.65rem;
+}
+
+.add-points-button {
+  background: var(--green);
+  box-shadow: 0 5px 0 #276749;
+}
+
+.manual-note {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.9rem;
+  font-weight: 700;
+  text-align: center;
 }
 
 .reset-button {
@@ -436,7 +569,7 @@ p {
   padding: 0.8rem;
   border: 2px solid var(--border);
   border-radius: 18px;
-  background: rgba(255, 255, 255, 0.98);
+  background: var(--settings-bg);
   box-shadow: var(--shadow);
 }
 
@@ -493,7 +626,7 @@ legend {
   border-left: 5px solid var(--blue);
   border-radius: 10px;
   padding: 0.55rem;
-  background: #f8fbff;
+  background: var(--history-item-bg);
   font-weight: 700;
 }
 

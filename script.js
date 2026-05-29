@@ -4,20 +4,32 @@
 */
 
 // ---------- Easy-to-edit game data ----------
-// To change the routine cards later, edit this list. The card number is also the point value.
+// To change the routine cards later, edit this list. Cards stay numbered 1-24, and each card has a fixed point value from 1-5.
 const ROUTINE_CARDS = [
-  { number: 1, phrase: "eaten lunch" },
-  { number: 2, phrase: "taken a bath" },
-  { number: 3, phrase: "gone to school" },
-  { number: 4, phrase: "finished my homework" },
-  { number: 5, phrase: "gone to bed" },
-  { number: 6, phrase: "returned home" },
-  { number: 7, phrase: "brushed my teeth" },
-  { number: 8, phrase: "eaten dinner" },
-  { number: 9, phrase: "woken up" },
-  { number: 10, phrase: "finished cleaning" },
-  { number: 11, phrase: "gone to club activities" },
-  { number: 12, phrase: "left my house" }
+  { number: 1, phrase: "eaten breakfast", points: 3 },
+  { number: 2, phrase: "eaten lunch", points: 1 },
+  { number: 3, phrase: "eaten dinner", points: 5 },
+  { number: 4, phrase: "taken a bath", points: 2 },
+  { number: 5, phrase: "taken a shower", points: 4 },
+  { number: 6, phrase: "gone to school", points: 1 },
+  { number: 7, phrase: "left my house", points: 3 },
+  { number: 8, phrase: "returned home", points: 5 },
+  { number: 9, phrase: "woken up", points: 2 },
+  { number: 10, phrase: "gone to bed", points: 4 },
+  { number: 11, phrase: "brushed my teeth", points: 1 },
+  { number: 12, phrase: "washed my face", points: 5 },
+  { number: 13, phrase: "changed my clothes", points: 3 },
+  { number: 14, phrase: "packed my bag", points: 2 },
+  { number: 15, phrase: "finished my homework", points: 4 },
+  { number: 16, phrase: "studied English", points: 1 },
+  { number: 17, phrase: "studied math", points: 5 },
+  { number: 18, phrase: "read a book", points: 2 },
+  { number: 19, phrase: "watched TV", points: 3 },
+  { number: 20, phrase: "played a game", points: 4 },
+  { number: 21, phrase: "used my phone", points: 1 },
+  { number: 22, phrase: "cleaned my room", points: 5 },
+  { number: 23, phrase: "gone to club activities", points: 2 },
+  { number: 24, phrase: "practiced sports", points: 3 }
 ];
 
 // ---------- Animation timing constants ----------
@@ -29,6 +41,7 @@ const QUICK_ANIMATION_DURATION = 450;
 const BETWEEN_ANIMATION_PAUSE = 350;
 
 const MINUTES = ["00", "05", "10", "15", "20", "25", "30", "35", "40", "45", "50", "55"];
+const APPEARANCE_STORAGE_KEY = "dailyRoutineGameAppearance";
 const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
 // ---------- Page elements ----------
@@ -69,23 +82,47 @@ const elements = {
   rollTimeButton: document.querySelector("#rollTimeButton"),
   flipAmpmButton: document.querySelector("#flipAmpmButton"),
   drawCardButton: document.querySelector("#drawCardButton"),
+  addPointsButton: document.querySelector("#addPointsButton"),
   resetButton: document.querySelector("#resetButton")
 };
 
+const hintData = [
+  {
+    element: elements.hintYet,
+    keyword: "yet",
+    buildSentence: (phrase) => `I haven’t ${phrase} yet.`
+  },
+  {
+    element: elements.hintAlready,
+    keyword: "already",
+    buildSentence: (phrase) => `I have already ${phrase}.`
+  },
+  {
+    element: elements.hintJust,
+    keyword: "just",
+    buildSentence: (phrase) => `I have just ${phrase}.`
+  }
+];
+
 // ---------- Game state for this browser session ----------
-let state = {
-  time: "--:--",
-  hour: null,
-  minute: "00",
-  ampm: "AM/PM",
-  card: null,
-  thisTurnPoints: 0,
-  totalPoints: 0,
-  turn: 0,
-  history: [],
-  deck: [],
-  isAnimating: false
-};
+let state = getFreshState();
+
+function getFreshState() {
+  return {
+    time: "--:--",
+    hour: null,
+    minute: "00",
+    ampm: "AM/PM",
+    card: null,
+    thisTurnPoints: 0,
+    totalPoints: 0,
+    turn: 0,
+    history: [],
+    deck: [],
+    isAnimating: false,
+    currentResultSaved: true
+  };
+}
 
 // ---------- Small helper functions ----------
 function randomInt(min, max) {
@@ -109,10 +146,21 @@ function getSetting(name) {
   return checked ? checked.value : "";
 }
 
+function setSetting(name, value) {
+  const input = document.querySelector(`input[name="${name}"][value="${value}"]`);
+  if (input) {
+    input.checked = true;
+  }
+}
+
 function setButtonsDisabled(disabled) {
   elements.buttons.forEach((button) => {
+    if (button === elements.addPointsButton) {
+      return;
+    }
     button.disabled = disabled;
   });
+  updateAddPointsButton();
 }
 
 function setActiveStep(panel, isActive) {
@@ -145,6 +193,22 @@ function ensureDeck() {
   if (state.deck.length === 0) {
     state.deck = shuffleArray(ROUTINE_CARDS);
   }
+}
+
+function markCurrentResultChanged() {
+  if (state.card) {
+    state.currentResultSaved = false;
+  }
+  updateAddPointsButton();
+}
+
+function markCurrentResultSaved() {
+  state.currentResultSaved = true;
+  updateAddPointsButton();
+}
+
+function updateAddPointsButton() {
+  elements.addPointsButton.disabled = state.isAnimating || !state.card || state.currentResultSaved;
 }
 
 // ---------- Result generation ----------
@@ -214,26 +278,35 @@ function updateAmpmDisplay(ampm) {
 
 function updateCardDisplay(card) {
   state.card = card;
-  state.thisTurnPoints = card.number;
+  state.thisTurnPoints = card.points;
   elements.cardNumber.textContent = `Card ${card.number}`;
   elements.routinePhrase.textContent = card.phrase;
-  elements.cardPoints.textContent = formatPoints(card.number);
-  elements.thisTurnPoints.textContent = formatPoints(card.number);
+  elements.cardPoints.textContent = formatPoints(card.points);
+  elements.thisTurnPoints.textContent = formatPoints(card.points);
   updateSentenceHints(card.phrase);
   updateDeckCount();
 }
 
 function updateSentenceHints(phrase) {
-  elements.hintYet.textContent = `I haven’t ${phrase} yet.`;
-  elements.hintAlready.textContent = `I have already ${phrase}.`;
-  elements.hintJust.textContent = `I have just ${phrase}.`;
+  hintData.forEach((hint) => {
+    const phraseElement = hint.element.querySelector(".hint-phrase");
+    phraseElement.textContent = phrase;
+    hint.element.dataset.sentence = hint.buildSentence(phrase);
+    setHintRevealed(hint.element, false, hint.keyword);
+  });
+}
+
+function setHintRevealed(button, isRevealed, keyword) {
+  button.classList.toggle("is-revealed", isRevealed);
+  button.setAttribute("aria-pressed", String(isRevealed));
+  button.setAttribute("aria-label", isRevealed ? `Hide ${keyword} hint: ${button.dataset.sentence}` : `Reveal ${keyword} hint`);
 }
 
 function updateDeckCount() {
   if (getSetting("cardMode") === "shuffle") {
-    elements.deckCount.textContent = `${state.deck.length} cards left before reshuffle`;
+    elements.deckCount.textContent = `Shuffle deck: ${state.deck.length} of ${ROUTINE_CARDS.length} cards left. No repeats until all cards are used.`;
   } else {
-    elements.deckCount.textContent = "Random draw with replacement";
+    elements.deckCount.textContent = `Random draw with replacement from ${ROUTINE_CARDS.length} cards`;
   }
 }
 
@@ -241,10 +314,25 @@ function updateScoreDisplay() {
   elements.thisTurnPoints.textContent = formatPoints(state.thisTurnPoints);
   elements.totalPoints.textContent = formatPoints(state.totalPoints);
   elements.turnNumber.textContent = `Turn ${state.turn}`;
+  updateAddPointsButton();
 }
 
 function updateHintsVisibility() {
   elements.sentenceHints.classList.toggle("is-hidden", getSetting("hints") === "off");
+}
+
+function applyAppearance() {
+  const appearance = getSetting("appearance");
+  document.body.classList.toggle("dark-mode", appearance === "dark");
+  localStorage.setItem(APPEARANCE_STORAGE_KEY, appearance || "light");
+}
+
+function loadSavedAppearance() {
+  const savedAppearance = localStorage.getItem(APPEARANCE_STORAGE_KEY);
+  if (savedAppearance === "dark" || savedAppearance === "light") {
+    setSetting("appearance", savedAppearance);
+  }
+  applyAppearance();
 }
 
 function renderHistory() {
@@ -275,9 +363,23 @@ function addHistoryEntry() {
     time: state.time,
     ampm: state.ampm,
     phrase: state.card.phrase,
-    points: state.card.number
+    points: state.card.points
   });
   renderHistory();
+}
+
+function addCurrentPoints() {
+  if (!state.card || state.currentResultSaved) {
+    return;
+  }
+
+  state.turn += 1;
+  state.totalPoints += state.card.points;
+  state.thisTurnPoints = state.card.points;
+  updateScoreDisplay();
+  animateScore(state.card.points);
+  addHistoryEntry();
+  markCurrentResultSaved();
 }
 
 function animateScore(points) {
@@ -350,7 +452,8 @@ async function drawRoutineCard() {
 }
 
 // ---------- Turn control ----------
-async function runSafely(action, addPointsAfter = false) {
+async function runSafely(action, options = {}) {
+  const { addPointsAfter = false, resultChanges = false } = options;
   if (state.isAnimating) {
     return;
   }
@@ -363,11 +466,14 @@ async function runSafely(action, addPointsAfter = false) {
     await action();
     if (addPointsAfter && state.card) {
       state.turn += 1;
-      state.totalPoints += state.card.number;
-      state.thisTurnPoints = state.card.number;
+      state.totalPoints += state.card.points;
+      state.thisTurnPoints = state.card.points;
       updateScoreDisplay();
-      animateScore(state.card.number);
+      animateScore(state.card.points);
       addHistoryEntry();
+      markCurrentResultSaved();
+    } else if (resultChanges) {
+      markCurrentResultChanged();
     }
   } finally {
     state.isAnimating = false;
@@ -383,7 +489,7 @@ function newTurn() {
     await wait(BETWEEN_ANIMATION_PAUSE);
     await drawRoutineCard();
     await wait(BETWEEN_ANIMATION_PAUSE);
-  }, true);
+  }, { addPointsAfter: true });
 }
 
 function resetGame() {
@@ -392,19 +498,10 @@ function resetGame() {
     return;
   }
 
-  state = {
-    time: "--:--",
-    hour: null,
-    minute: "00",
-    ampm: "AM/PM",
-    card: null,
-    thisTurnPoints: 0,
-    totalPoints: 0,
-    turn: 0,
-    history: [],
-    deck: [],
-    isAnimating: false
-  };
+  state = getFreshState();
+  if (getSetting("cardMode") === "shuffle") {
+    ensureDeck();
+  }
 
   elements.timeResult.textContent = "--:--";
   elements.ampmResult.textContent = "AM/PM";
@@ -417,9 +514,9 @@ function resetGame() {
   elements.cardNumber.textContent = "Card --";
   elements.routinePhrase.textContent = "Tap New Turn";
   elements.cardPoints.textContent = "-- points";
-  elements.deckCount.textContent = "Random draw with replacement";
   updateSentenceHints("_____");
   updateScoreDisplay();
+  updateDeckCount();
   renderHistory();
 }
 
@@ -440,21 +537,37 @@ document.addEventListener("keydown", (event) => {
   }
 });
 
+hintData.forEach((hint) => {
+  hint.element.addEventListener("click", () => {
+    const nextState = !hint.element.classList.contains("is-revealed");
+    setHintRevealed(hint.element, nextState, hint.keyword);
+  });
+});
+
 elements.newTurnButton.addEventListener("click", newTurn);
-elements.rollTimeButton.addEventListener("click", () => runSafely(rollTime));
-elements.flipAmpmButton.addEventListener("click", () => runSafely(flipAmpm));
-elements.drawCardButton.addEventListener("click", () => runSafely(drawRoutineCard));
+elements.rollTimeButton.addEventListener("click", () => runSafely(rollTime, { resultChanges: true }));
+elements.flipAmpmButton.addEventListener("click", () => runSafely(flipAmpm, { resultChanges: true }));
+elements.drawCardButton.addEventListener("click", () => runSafely(drawRoutineCard, { resultChanges: true }));
+elements.addPointsButton.addEventListener("click", addCurrentPoints);
 elements.resetButton.addEventListener("click", resetGame);
 
-elements.settingsForm.addEventListener("change", () => {
-  if (getSetting("cardMode") === "shuffle") {
-    ensureDeck();
+elements.settingsForm.addEventListener("change", (event) => {
+  if (event.target.name === "cardMode") {
+    state.deck = [];
+    if (getSetting("cardMode") === "shuffle") {
+      ensureDeck();
+    }
+  }
+  if (event.target.name === "appearance") {
+    applyAppearance();
   }
   updateHintsVisibility();
   updateDeckCount();
 });
 
 // ---------- First screen setup ----------
+loadSavedAppearance();
+ensureDeck();
 updateSentenceHints("_____");
 updateScoreDisplay();
 updateHintsVisibility();
